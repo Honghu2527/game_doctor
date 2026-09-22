@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4efe5">
   <meta name="description" content="医学生养成记录——中国医学生分支人生模拟器">
   <title>医学生养成记录</title>
-  <link rel="stylesheet" href="styles.css?v=0.3.0">
+  <link rel="stylesheet" href="styles.css?v=0.4.0">
 </head>
 <body>
   <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
@@ -24,7 +24,7 @@
     </header>
 
     <section id="startScreen" class="panel start-panel">
-      <div class="hero-badge">中国医学生人生模拟器 · v0.3.0</div>
+      <div class="hero-badge">中国医学生人生模拟器 · v0.4.0</div>
       <h2>先从高考那一秒开始。</h2>
       <p class="intro">你会亲手“停下”自己的高考分数，再在游戏化报考区间里选择医学院校。学校会影响后续培养压力、科研竞争、生活成本和初始属性。</p>
       <div class="form-row">
@@ -104,6 +104,7 @@
         <div><span>高考</span><strong id="metaScore">—</strong></div>
         <div><span>模式</span><strong id="metaDifficulty">—</strong></div>
         <div><span>培养生态</span><strong id="metaProfile">—</strong></div>
+        <div><span>当前路线</span><strong id="metaRoute">本科·未分流</strong></div>
       </section>
 
       <section class="status-grid" aria-label="角色属性">
@@ -122,6 +123,14 @@
           <span id="yearText" class="year-text"></span>
         </div>
         <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <div id="criticalBanner" class="critical-banner" hidden>
+          <strong id="criticalTitle">⚠️ 关键人生选择</strong>
+          <span id="criticalText"></span>
+        </div>
+        <div id="opportunityBanner" class="opportunity-banner" hidden>
+          <strong>🎯 竞争性机会</strong>
+          <span id="opportunityText"></span>
+        </div>
         <h2 id="sceneTitle"></h2>
         <p id="sceneText" class="scene-text"></p>
         <div id="effectHint" class="effect-hint"></div>
@@ -147,14 +156,15 @@
     </section>
 
     <footer>
-      <span>Prototype · Honghu2527/game_doctor · v0.3.0</span>
+      <span>Prototype · Honghu2527/game_doctor · v0.4.0</span>
       <span>院校与分数为游戏化设定，不构成高考志愿或职业建议。</span>
     </footer>
   </main>
 
-  <script src="data/schools.js?v=0.3.0"></script>
-  <script src="data/events.js?v=0.3.0"></script>
-  <script src="data/school_system.js?v=0.3.0"></script>
-  <script src="app.js?v=0.3.0"></script>
+  <script src="data/schools.js?v=0.4.0"></script>
+  <script src="data/events.js?v=0.4.0"></script>
+  <script src="data/school_system.js?v=0.4.0"></script>
+  <script src="data/career_tree.js?v=0.4.0"></script>
+  <script src="app.js?v=0.4.0"></script>
 </body>
 </html>
