@@ -1087,7 +1087,7 @@ body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/b
 }
 
 /* Real AI images committed under assets/bg/ */
-body[data-stage-bg="undergrad"] .stage-backdrop{background-image:url("assets/bg/undergrad_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="undergrad"] .stage-backdrop{background-image:url("assets/bg/undergrad_ai.webp?v=096hq")!important;background-position:center 42%!important}
 body[data-stage-bg="internal"] .stage-backdrop{background-image:url("assets/bg/internal_ai.webp?v=095")!important;background-position:center 42%!important}
 body[data-stage-bg="surgery"] .stage-backdrop{background-image:url("assets/bg/surgery_ai.webp?v=095")!important;background-position:center 44%!important}
 body[data-stage-bg="pediatrics"] .stage-backdrop{background-image:url("assets/bg/pediatrics_ai.webp?v=095")!important;background-position:center 42%!important}
@@ -1189,3 +1189,5 @@ body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/b
 }
 
 /* build:v0.9.5-real-ai-backgrounds */
+
+/* build:v0.9.6-hq-undergrad */
