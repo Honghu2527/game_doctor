@@ -363,7 +363,7 @@
     schoolLevelFilter=allowed.length===1?allowed[0]:"all";
     schoolSearchQuery="";
     el("schoolSearch").value="";
-    Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(btn){
+    Array.prototype.forEach.call(document.querySelectorAll("[data-level]"),function(btn){
       var level=btn.getAttribute("data-level");
       var valid=level==="all"?allowed.length>1:allowed.indexOf(level)>=0;
       btn.disabled=!valid;
@@ -432,7 +432,7 @@
     var profileId=profileIdForSchool(school);
 
     state={
-      version:6,
+      version:8,
       name:pendingName,
       background:bg,
       difficulty:selectedDifficulty,
@@ -898,7 +898,11 @@
       var anchor=ORDER.indexOf(state.activeOpportunity.returnNext);
       return Math.round((Math.max(1,anchor)/ORDER.length)*100);
     }
-    if(e&&["side","random","school"].indexOf(e.type)>=0&&state.pendingNext){
+    if(state.specialtyReturnNext&&e&&e.type==="specialty"){
+      var sp=ORDER.indexOf(state.specialtyReturnNext);
+      return Math.round((Math.max(1,sp)/ORDER.length)*100);
+    }
+    if(e&&["side","random","school","specialty"].indexOf(e.type)>=0&&state.pendingNext){
       var p=ORDER.indexOf(state.pendingNext);
       return Math.round((Math.max(1,p)/ORDER.length)*100);
     }
@@ -1276,10 +1280,10 @@
     schoolSearchQuery=this.value.trim();
     renderSchoolGrid();
   });
-  Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(btn){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-level]"),function(btn){
     btn.addEventListener("click",function(){
       schoolLevelFilter=btn.getAttribute("data-level")||"all";
-      Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(x){
+      Array.prototype.forEach.call(document.querySelectorAll("[data-level]"),function(x){
         x.classList.toggle("active",x===btn);
       });
       renderSchoolGrid();
@@ -1333,5 +1337,5 @@
     el("toggleLogBtn").textContent=hidden?"收起":"展开";
   });
 
-  initBirthSelectors();renderDifficulty();resetGaokao();refreshContinue();
+  initBirthSelectors();renderDifficulty();resetGaokao();refreshContinue();renderJourneyRibbon("startScreen");
 })();
