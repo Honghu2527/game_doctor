@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4efe5">
   <meta name="description" content="医学生养成记录——中国医学生分支人生模拟器">
   <title>医学生养成记录</title>
-  <link rel="stylesheet" href="styles.css?v=0.2.1">
+  <link rel="stylesheet" href="styles.css?v=0.3.0">
 </head>
 <body>
   <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
@@ -24,7 +24,7 @@
     </header>
 
     <section id="startScreen" class="panel start-panel">
-      <div class="hero-badge">中国医学生人生模拟器 · v0.2.1</div>
+      <div class="hero-badge">中国医学生人生模拟器 · v0.3.0</div>
       <h2>先从高考那一秒开始。</h2>
       <p class="intro">你会亲手“停下”自己的高考分数，再在游戏化报考区间里选择医学院校。学校会影响后续培养压力、科研竞争、生活成本和初始属性。</p>
       <div class="form-row">
@@ -82,6 +82,19 @@
         <div class="fake-seal">录取</div>
       </div>
       <div id="schoolEffectSummary" class="school-effect-summary"></div>
+      <div class="school-ecosystem-card">
+        <div class="eyebrow">SCHOOL ECOSYSTEM</div>
+        <h3 id="profileName">培养生态</h3>
+        <p id="profileDesc"></p>
+        <div id="profileTags" class="school-tags"></div>
+      </div>
+      <div class="talent-panel">
+        <div class="panel-title-row">
+          <div><div class="eyebrow">INITIAL TALENTS</div><h3>入学天赋</h3></div>
+          <span class="talent-note">高考影响学术型天赋期望值，但不会决定全部人生。</span>
+        </div>
+        <div id="talentGrid" class="talent-grid"></div>
+      </div>
       <button id="enterUniversityBtn" class="primary-btn">确认入学 · 开启医学人生</button>
     </section>
 
@@ -90,6 +103,7 @@
         <div><span>学校</span><strong id="metaSchool">—</strong></div>
         <div><span>高考</span><strong id="metaScore">—</strong></div>
         <div><span>模式</span><strong id="metaDifficulty">—</strong></div>
+        <div><span>培养生态</span><strong id="metaProfile">—</strong></div>
       </section>
 
       <section class="status-grid" aria-label="角色属性">
@@ -133,13 +147,14 @@
     </section>
 
     <footer>
-      <span>Prototype · Honghu2527/game_doctor · v0.2.1</span>
+      <span>Prototype · Honghu2527/game_doctor · v0.3.0</span>
       <span>院校与分数为游戏化设定，不构成高考志愿或职业建议。</span>
     </footer>
   </main>
 
-  <script src="data/schools.js?v=0.2.1"></script>
-  <script src="data/events.js?v=0.2.1"></script>
-  <script src="app.js?v=0.2.1"></script>
+  <script src="data/schools.js?v=0.3.0"></script>
+  <script src="data/events.js?v=0.3.0"></script>
+  <script src="data/school_system.js?v=0.3.0"></script>
+  <script src="app.js?v=0.3.0"></script>
 </body>
 </html>
