@@ -18,31 +18,37 @@ window.JOB_DATA = {
   ],
   hospitalTemplates:[
     {
-      id:"national_academic",name:"国家级医学中心 / 顶尖大学附属三甲（游戏岗位）",minCityTier:5,
+      id:"national_academic",name:"国家级医学中心 / 顶尖大学附属三甲（游戏岗位）",minCityTier:5,maxCityTier:5,
       minEducation:3,requireResidency:true,minResearch:60,minQ1:2,minIF:10,minPlatform:4,
       baseChance:.18,weightResearch:.34,weightClinical:.20,weightReputation:.18,
       desc:"科研与临床双高压岗位。博士、高质量论文和高平台训练经历非常重要。"
     },
     {
-      id:"provincial_aaa",name:"省级三甲 / 强区域医学中心（游戏岗位）",minCityTier:3,
+      id:"metro_aaa",name:"大型市属三甲 / 综合医学中心（游戏岗位）",minCityTier:4,maxCityTier:5,
+      minEducation:2,requireResidency:true,minResearch:20,minQ1:0,minIF:0,minPlatform:0,preferredPlatform:3,
+      baseChance:.40,weightResearch:.15,weightClinical:.32,weightReputation:.18,
+      desc:"大城市里的高竞争临床岗位。硕士可申请，博士和高水平成果会明显增加竞争力。"
+    },
+    {
+      id:"provincial_aaa",name:"省级三甲 / 强区域医学中心（游戏岗位）",minCityTier:3,maxCityTier:5,
       minEducation:2,requireResidency:true,minResearch:30,minQ1:0,minIF:0,minPlatform:0,preferredPlatform:3,
       baseChance:.34,weightResearch:.22,weightClinical:.28,weightReputation:.18,
       desc:"硕士或博士更有优势；热门科室可能额外看论文、科研和院校平台。"
     },
     {
-      id:"city_aaa",name:"地市级三甲医院（游戏岗位）",minCityTier:2,
+      id:"city_aaa",name:"地市级三甲医院（游戏岗位）",minCityTier:2,maxCityTier:4,
       minEducation:2,requireResidency:true,minResearch:10,minQ1:0,minIF:0,minPlatform:0,preferredPlatform:3,
       baseChance:.48,weightResearch:.10,weightClinical:.36,weightReputation:.18,
       desc:"更看规培、临床能力和岗位匹配；部分竞争岗位会偏好高水平院校背景。"
     },
     {
-      id:"city_general",name:"地市综合医院 / 专科医院（游戏岗位）",minCityTier:2,
+      id:"city_general",name:"地市综合医院 / 专科医院（游戏岗位）",minCityTier:2,maxCityTier:3,
       minEducation:1,requireResidency:true,minResearch:0,minQ1:0,minIF:0,minPlatform:0,
       baseChance:.60,weightResearch:.05,weightClinical:.40,weightReputation:.16,
       desc:"临床与规培是核心，学历和科研仍可提高竞争力。"
     },
     {
-      id:"county_center",name:"县域医疗中心（游戏岗位）",minCityTier:1,
+      id:"county_center",name:"县域医疗中心（游戏岗位）",minCityTier:1,maxCityTier:1,
       minEducation:1,requireResidency:false,minResearch:0,minQ1:0,minIF:0,minPlatform:0,
       baseChance:.72,weightResearch:.03,weightClinical:.42,weightReputation:.14,
       desc:"岗位更强调临床胜任力和稳定性，科研不是主要门槛。"
