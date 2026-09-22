@@ -130,3 +130,30 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
   .career-strip{grid-template-columns:1fr 1fr}.career-strip>div:first-child{grid-column:1/-1}
   .letter-title{letter-spacing:.12em}.fake-seal{width:74px;height:74px;font-size:20px}
 }
+
+
+/* v0.3 school ecosystem + talent system */
+.school-ecosystem-card,.talent-panel{
+  text-align:left;border:1px solid var(--line);border-radius:18px;background:rgba(255,253,248,.92);
+  padding:18px;margin:14px 0
+}
+.school-ecosystem-card h3,.talent-panel h3{margin:4px 0 8px;font-size:19px}
+.school-ecosystem-card p{margin:0 0 12px;color:var(--muted);line-height:1.7}
+.talent-note{font-size:11px;color:var(--muted);max-width:330px;text-align:right;line-height:1.5}
+.talent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.talent-card{border:1px solid #e0d8cc;border-radius:14px;padding:12px;background:#fff}
+.talent-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+.talent-top span{font-size:12px;font-weight:800}.talent-top strong{font-size:20px}
+.talent-track{height:6px;border-radius:99px;background:#eee7dc;overflow:hidden}
+.talent-fill{height:100%;border-radius:99px;background:var(--accent-2)}
+.talent-card small{display:block;color:var(--muted);font-size:10px;line-height:1.45;margin-top:7px}
+.profile-label{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:#eee8dc;color:#654f38;font-size:11px;font-weight:800;margin-bottom:8px}
+.school-opportunity{font-size:11px;color:var(--accent-2);font-weight:800;margin-top:6px}
+.type-chip.school{background:#e4edf7;color:#345d86}
+.career-strip{grid-template-columns:2fr .65fr .9fr 1.2fr}
+@media(max-width:760px){
+  .talent-grid{grid-template-columns:repeat(2,1fr)}
+  .talent-note{max-width:190px}
+  .career-strip{grid-template-columns:1fr 1fr}
+  .career-strip>div:first-child{grid-column:1/-1}
+}
