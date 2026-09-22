@@ -1638,3 +1638,48 @@ body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/b
     flex-direction:column;
   }
 }
+
+
+/* =========================================================
+   v0.11.3 — two-revive cap + optional share promotion
+   ========================================================= */
+.revive-share-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:0 0 14px;
+  padding:13px 15px;
+  border:1px solid #cfded7;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(78,139,119,.12),transparent 32%),
+    linear-gradient(145deg,#f9fdfb,#edf6f1);
+  box-shadow:0 8px 24px rgba(24,54,47,.06);
+}
+.revive-share-banner[hidden]{display:none!important}
+.revive-share-banner>div{display:grid;gap:3px}
+.revive-share-banner strong{color:#264f47;font-size:12px}
+.revive-share-banner span{color:#6c7f7a;font-size:9px;line-height:1.5}
+.revive-share-banner .mini-btn{white-space:nowrap}
+
+.ending-actions-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:14px;
+}
+.ending-actions-row button{width:100%}
+
+@media(max-width:760px){
+  .revive-share-banner{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .revive-share-banner .mini-btn{
+    width:100%;
+  }
+  .ending-actions-row{
+    grid-template-columns:1fr;
+  }
+}
