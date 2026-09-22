@@ -1305,3 +1305,101 @@ body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/b
   .status-grid{grid-template-columns:1fr 1fr!important}
   .ending-career-status{padding:15px}
 }
+
+
+/* =========================================================
+   v0.10.2 — redesigned medical logo + mobile header alignment
+   ========================================================= */
+.brand-lockup{
+  display:flex;
+  align-items:center;
+  gap:15px;
+  min-width:0;
+}
+.brand-copy{
+  min-width:0;
+  flex:1 1 auto;
+}
+.brand-mark{
+  width:64px!important;
+  height:64px!important;
+  flex:0 0 64px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:20px!important;
+  background:transparent!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.16)!important;
+  overflow:visible!important;
+  font-size:0!important;
+  line-height:0!important;
+}
+.brand-mark img{
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:none;
+  object-fit:contain;
+  object-position:center center;
+  margin:0;
+  transform:none;
+  filter:drop-shadow(0 5px 14px rgba(0,0,0,.12));
+}
+
+@media(max-width:760px){
+  .topbar{
+    align-items:stretch!important;
+  }
+  .brand-lockup{
+    width:100%;
+    display:grid!important;
+    grid-template-columns:54px minmax(0,1fr);
+    align-items:center!important;
+    column-gap:10px!important;
+  }
+  .brand-mark{
+    width:54px!important;
+    height:54px!important;
+    flex-basis:54px!important;
+    border-radius:17px!important;
+    justify-self:center!important;
+    align-self:center!important;
+  }
+  .brand-copy{
+    width:100%;
+    min-width:0;
+  }
+  .brand-copy .eyebrow{
+    margin:0 0 3px!important;
+    font-size:9px!important;
+    letter-spacing:.14em!important;
+    line-height:1.25!important;
+  }
+  .brand-copy h1{
+    margin:0 0 6px!important;
+    font-size:34px!important;
+    line-height:1.02!important;
+    letter-spacing:-.025em!important;
+  }
+  .brand-copy .subtitle{
+    margin:0!important;
+    font-size:11px!important;
+    line-height:1.55!important;
+  }
+}
+
+@media(max-width:390px){
+  .brand-lockup{
+    grid-template-columns:48px minmax(0,1fr);
+    column-gap:8px!important;
+  }
+  .brand-mark{
+    width:48px!important;
+    height:48px!important;
+    border-radius:15px!important;
+  }
+  .brand-copy h1{font-size:31px!important}
+  .brand-copy .subtitle{font-size:10px!important}
+}
