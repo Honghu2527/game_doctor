@@ -4,12 +4,13 @@
   var DATA=window.GAME_DATA;
   var SCHOOL_DATA=window.SCHOOL_DATA;
   var SCHOOL_SYSTEM=window.SCHOOL_SYSTEM;
+  var CAREER_DATA=window.CAREER_DATA;
   var DIFFICULTIES=DATA.difficulties;
-  var EVENTS=DATA.events;
+  var CAREER_EVENTS=CAREER_DATA.events;
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
-  var ORDER=DATA.order;
-  var SAVE_KEY="doctor-life-sim-v03";
+  var ORDER=CAREER_DATA.order;
+  var SAVE_KEY="doctor-life-sim-v04";
 
   var state=null;
   var selectedDifficulty="normal";
@@ -140,7 +141,7 @@
         "<h3>"+escapeHtml(s.name)+"</h3>"+
         "<p>"+escapeHtml(s.flavor)+"</p>"+
         "<div class=\"school-tags\">"+p.tags.slice(0,3).map(function(t){return "<span>"+escapeHtml(t)+"</span>";}).join("")+"</div>"+
-        "<div class=\"school-opportunity\">机会密度 "+stars(p.opportunity)+" · 临床入口 "+stars(p.clinicalAccess)+"</div>"+
+        "<div class=\"school-opportunity\">机会密度 "+stars(p.opportunity)+" · 临床入口 "+stars(p.clinicalAccess)+" · 国际/交叉 "+stars(p.global)+"</div>"+
         "<div class=\"school-bottom\"><small>综合压力 "+stars(s.level)+"</small><b>选择这所学校 →</b></div>"+
       "</button>";
     }).join("");
@@ -199,45 +200,48 @@
     var d=DIFFICULTIES[selectedDifficulty],profile=profileForSchool(school);
     var stats=Object.assign({},d.start);
     directApply(stats,school.mods);
+    var profileId=profileIdForSchool(school);
 
     state={
-      version:3,
+      version:4,
       name:pendingName,
       difficulty:selectedDifficulty,
       score:rollingScore,
       schoolId:id,
-      profileId:profileIdForSchool(school),
+      profileId:profileId,
       talents:generateTalents(rollingScore,school,profile),
       stats:stats,
       flags:new Set(),
-      scene:"orientation",
+      scene:CAREER_DATA.entryByProfile[profileId]||"fresh_growth",
       pendingNext:null,
       visitedSide:new Set(),
+      applications:{},
+      route:"本科·未分流",
+      signaturePending:true,
       log:[],
       finished:false
     };
 
     state.flags.add("schoolLevel"+school.level);
-    state.flags.add("profile_"+state.profileId);
+    state.flags.add("profile_"+profileId);
     if(state.score>=710)state.flags.add("gaokaoTop");
     if(state.score<575)state.flags.add("underdogStart");
 
     addLog("高考放榜",state.name+" 高考 "+state.score+" 分。");
     addLog("录取",state.name+" 选择了 "+school.name+" 临床医学专业。");
-    addLog("培养生态","你的学校生态为「"+profile.name+"」。");
+    addLog("培养生态","你的学校生态为「"+profile.name+"」，第一章将按该生态进入不同剧情。");
 
     el("letterSchool").textContent=school.name;
     el("letterSchoolInline").textContent=school.name;
     el("letterName").textContent=state.name;
     el("letterScore").textContent=state.score;
-
     el("schoolEffectSummary").innerHTML=
-      "<strong>学校不再只是数值修正：</strong><br>"+
+      "<strong>学校会改变实际事件树：</strong><br>"+
       "综合压力 ×"+(school.pressure*profile.negativeScale).toFixed(2)+
       " · 机会密度 "+stars(profile.opportunity)+
       " · 临床入口 "+stars(profile.clinicalAccess)+
       " · 国际/交叉 "+stars(profile.global)+
-      "<br>开局属性修正："+effectText(school.mods)+
+      "<br>你进入大学后的第一道题将由「"+escapeHtml(profile.name)+"」决定。"+
       "<br><span style=\"color:#8a7d70\">"+escapeHtml(SCHOOL_SYSTEM.disclaimer)+"</span>";
 
     el("profileName").textContent=profile.name;
@@ -300,12 +304,10 @@
   function requirementsMet(req){
     if(!req)return true;
     if(req.stats){
-      var okStats=Object.keys(req.stats).every(function(k){return metricValue(k)>=req.stats[k];});
-      if(!okStats)return false;
+      if(!Object.keys(req.stats).every(function(k){return metricValue(k)>=req.stats[k];}))return false;
     }
     if(req.talents){
-      var okTalents=Object.keys(req.talents).every(function(k){return metricValue(k)>=req.talents[k];});
-      if(!okTalents)return false;
+      if(!Object.keys(req.talents).every(function(k){return metricValue(k)>=req.talents[k];}))return false;
     }
     if(req.flags&&!req.flags.every(function(f){return state.flags.has(f);})){return false;}
     if(req.schoolLevel){
@@ -320,8 +322,7 @@
     var parts=[];
     if(req.stats)Object.keys(req.stats).forEach(function(k){parts.push((statNames[k]||k)+"≥"+req.stats[k]);});
     if(req.talents)Object.keys(req.talents).forEach(function(k){
-      var m=SCHOOL_SYSTEM.talents[k];
-      parts.push((m?m.name:k)+"≥"+req.talents[k]);
+      var m=SCHOOL_SYSTEM.talents[k];parts.push((m?m.name:k)+"≥"+req.talents[k]);
     });
     if(req.flags)parts.push("需要前置经历");
     if(req.schoolLevel)parts.push("需要院校等级 "+req.schoolLevel+"+");
@@ -338,7 +339,9 @@
     p=clamp(p,.08,.92);
     var success=Math.random()<p;
     applyEffects(success?chance.success:chance.fail);
-    addLog(success?"幸运事件":"挫折事件",success?"这一次，积累、天赋和运气都站在了你这边。":"这一次结果没有如愿，但人生继续。");
+    (success?(chance.successFlags||[]):(chance.failFlags||[])).forEach(function(f){state.flags.add(f);});
+    addLog(success?"申请成功 / 幸运事件":"申请失败 / 挫折事件",
+      success?"这一次，能力、准备和运气都站在了你这边。":"结果没有如愿。这个失败会留下痕迹，但不会直接结束人生。");
     return success;
   }
 
@@ -362,7 +365,7 @@
     }
     if(kind==="resource_hunt"){
       return [
-        {text:"主动敲门争取资源",sub:"机会不会自动出现。",effects:{research:4,reputation:3,mental:-2},chance:{p:.5,bonusBy:["communication","knowledge"],success:{research:5,mental:4},fail:{mental:-2}},talentEffects:{communication:1,resilience:1},flags:["selfMadeOpportunity"],next:"__RETURN__"},
+        {text:"主动敲门争取资源",sub:"机会不会自动出现。",effects:{research:4,reputation:3,mental:-2},chance:{p:.5,bonusBy:["communication","knowledge"],success:{research:5,mental:4},fail:{mental:-2},successFlags:["selfMadeOpportunity"],failFlags:["resourceMiss"]},next:"__RETURN__"},
         {text:"先把成绩做起来",sub:"以后用硬成绩换机会。",effects:{knowledge:7,energy:-3},flags:["gradeFirst"],next:"__RETURN__"}
       ];
     }
@@ -396,18 +399,14 @@
     var sig=SCHOOL_SYSTEM.signatures[s.id];
     if(!sig)return null;
     return {
-      stage:"院校专属 · "+s.name,
-      year:"18-21岁",
-      title:sig.title,
-      type:"school",
-      text:sig.desc,
-      choices:signatureOptions(sig.kind)
+      stage:"院校专属 · "+s.name,year:"18-21岁",title:sig.title,type:"school",
+      text:sig.desc,choices:signatureOptions(sig.kind)
     };
   }
 
   function allEvents(){
     var merged={};
-    Object.keys(EVENTS).forEach(function(k){merged[k]=EVENTS[k];});
+    Object.keys(CAREER_EVENTS).forEach(function(k){merged[k]=CAREER_EVENTS[k];});
     Object.keys(SIDE_EVENTS).forEach(function(k){merged[k]=SIDE_EVENTS[k];});
     Object.keys(ECO_EVENTS).forEach(function(k){merged[k]=ECO_EVENTS[k];});
     var sig=signatureEventForSchool();
@@ -415,71 +414,80 @@
     return merged;
   }
 
-  function getSchoolChoices(sceneId){
-    var list=(SCHOOL_SYSTEM.schoolChoices[sceneId]||[]);
-    var pid=state.profileId||profileIdForSchool(currentSchool());
-    return list.filter(function(c){
-      return !c.profile||c.profile.indexOf(pid)>=0;
-    });
+  function genericSidePool(){
+    var e=allEvents()[state.scene];
+    var stage=(e&&e.stage)||"";
+    if(/本科|大一|白大褂/.test(stage))return ["side_love","side_health","side_competition","side_lab_failure","side_volunteer","side_parttime"];
+    if(/研究生|博士|海外升学/.test(stage))return ["side_lab_failure","side_authorship","side_rejection","side_love_distance","side_health"];
+    if(/规培|住院|主治|职业|高级职称/.test(stage))return ["side_health","side_patient_thanks","side_night_food","side_parent_health","side_grant_reject"];
+    return [];
   }
 
-  function ecologyCandidates(sceneId){
-    var profile=currentProfile();
-    return (profile.eventPool||[]).filter(function(id){
-      var e=ECO_EVENTS[id];
-      return e&&e.triggerScenes&&e.triggerScenes.indexOf(sceneId)>=0&&!state.visitedSide.has(id);
-    });
-  }
-
-  function maybeEnterSide(current,next){
-    if(state.scene==="orientation"&&!state.visitedSide.has("__SIGNATURE__")&&signatureEventForSchool()){
+  function maybeEnterDetour(current,next){
+    if(state.signaturePending&&/^fresh_/.test(state.scene)&&signatureEventForSchool()){
       state.pendingNext=next;
       state.scene="__SIGNATURE__";
+      state.signaturePending=false;
       state.visitedSide.add("__SIGNATURE__");
-      addLog("院校专属","触发 "+currentSchool().name+" 的专属开局事件。");
+      addLog("院校专属","触发 "+currentSchool().name+" 的独立院校事件。");
       return true;
     }
 
-    var globalCandidates=(current.sidePool||[]).filter(function(id){
-      return SIDE_EVENTS[id]&&!state.visitedSide.has(id);
-    });
-    var ecoCandidates=ecologyCandidates(state.scene);
+    if(current.type==="key"||current.type==="opportunity")return false;
+
     var profile=currentProfile();
+    var ecoPool=(profile.eventPool||[]).filter(function(id){return ECO_EVENTS[id]&&!state.visitedSide.has(id);});
+    if(ecoPool.length&&Math.random()<(0.16+profile.eventChanceBonus/2)){
+      var eco=ecoPool[Math.floor(Math.random()*ecoPool.length)];
+      state.pendingNext=next;state.scene=eco;state.visitedSide.add(eco);
+      addLog("院校生态","你的学校环境触发了《"+ECO_EVENTS[eco].title+"》。");
+      return true;
+    }
 
-    var chooseEco=ecoCandidates.length&&Math.random()<(0.22+profile.eventChanceBonus);
-    var chooseGlobal=globalCandidates.length&&Math.random()<(current.sideChance||0);
-
-    var pool=[];
-    if(chooseEco)pool=ecoCandidates;
-    else if(chooseGlobal)pool=globalCandidates;
-    if(!pool.length)return false;
-
-    var id=pool[Math.floor(Math.random()*pool.length)];
-    state.pendingNext=next;
-    state.scene=id;
-    state.visitedSide.add(id);
-    addLog(ECO_EVENTS[id]?"院校机会":"支线触发","触发《"+allEvents()[id].title+"》。");
-    return true;
+    var sidePool=genericSidePool().filter(function(id){return SIDE_EVENTS[id]&&!state.visitedSide.has(id);});
+    if(sidePool.length&&Math.random()<.30){
+      var sid=sidePool[Math.floor(Math.random()*sidePool.length)];
+      state.pendingNext=next;state.scene=sid;state.visitedSide.add(sid);
+      addLog("人生支线","触发《"+SIDE_EVENTS[sid].title+"》。");
+      return true;
+    }
+    return false;
   }
 
   function choose(choice){
     var current=allEvents()[state.scene];
+    if(!current)return;
+
     applyEffects(choice.effects);
     applyTalentEffects(choice.talentEffects);
     (choice.flags||[]).forEach(function(f){state.flags.add(f);});
-    if(choice.chance)resolveChance(choice.chance);
+    if(choice.route)state.route=choice.route;
+
+    if(current.exclusiveGroup&&choice.application){
+      state.applications=state.applications||{};
+      state.applications[current.exclusiveGroup]=choice.application;
+      addLog("机会押注","你把本轮唯一申请名额用在了「"+choice.application+"」。其他选项关闭。");
+    }
+
+    var success=null;
+    if(choice.chance)success=resolveChance(choice.chance);
 
     var effects=effectText(choice.effects);
     addLog(current.stage,current.title+" → "+choice.text+(effects?"（"+effects+"）":""));
 
     if(state.stats.mental<=0||state.stats.energy<=0){showEnding("burnout");return;}
-    if(choice.next==="__END__"){showEnding();return;}
 
-    if(choice.next==="__RETURN__"){
-      state.scene=state.pendingNext||"orientation";
+    var next=choice.next;
+    if(success===true&&choice.successNext)next=choice.successNext;
+    if(success===false&&choice.failNext)next=choice.failNext;
+
+    if(next==="__END__"){showEnding();return;}
+
+    if(next==="__RETURN__"){
+      state.scene=state.pendingNext||CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth";
       state.pendingNext=null;
-    }else if(!maybeEnterSide(current,choice.next)){
-      state.scene=choice.next;
+    }else if(!maybeEnterDetour(current,next)){
+      state.scene=next;
     }
 
     saveState();render();
@@ -488,18 +496,19 @@
 
   function sceneProgress(){
     var e=allEvents()[state.scene];
-    if(e&&e.type!=="main"&&state.pendingNext){
+    if(e&&["side","random","school"].indexOf(e.type)>=0&&state.pendingNext){
       var p=ORDER.indexOf(state.pendingNext);
       return Math.round((Math.max(1,p)/ORDER.length)*100);
     }
     var i=ORDER.indexOf(state.scene);
-    if(i<0)return 0;
+    if(i<0)return 5;
     return Math.round(((i+1)/ORDER.length)*100);
   }
 
   function render(){
     if(!state)return;
     var e=allEvents()[state.scene];
+    if(!e){state.scene=CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth";e=allEvents()[state.scene];}
     var school=currentSchool(),profile=currentProfile();
 
     statKeys.forEach(function(k){
@@ -511,6 +520,7 @@
     el("metaScore").textContent=state.score||"—";
     el("metaDifficulty").textContent=DIFFICULTIES[state.difficulty].name;
     el("metaProfile").textContent=profile.name;
+    el("metaRoute").textContent=state.route||"本科·未分流";
 
     el("stageChip").textContent=e.stage;
     el("yearText").textContent=e.year;
@@ -518,31 +528,43 @@
     el("sceneText").textContent=e.text;
     el("progressBar").style.width=sceneProgress()+"%";
 
-    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校机会":"主线";
+    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":"主线";
     el("typeChip").textContent=typeName;
-    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":"");
+    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":"");
 
-    if(e.type==="school"){
-      el("effectHint").textContent="这是由你的学校培养生态触发的机会；换一所学校，本局可能根本不会出现。";
-    }else if(e.type==="main"){
-      el("effectHint").textContent="主线相同，但院校专属选项、机会池、天赋门槛和支线概率都可能不同。";
-    }else{
-      el("effectHint").textContent="完成这段支线后，你会回到原来的主线。";
+    var panel=document.querySelector(".story-panel");
+    panel.classList.toggle("key-scene",!!e.critical);
+    panel.classList.toggle("opportunity-scene",e.type==="opportunity");
+
+    el("criticalBanner").hidden=!e.critical;
+    if(e.critical){
+      el("criticalTitle").textContent="⚠️ 关键人生选择";
+      el("criticalText").textContent=e.warning||"这个选择会改变后续路线。";
     }
 
-    var choices=e.choices.slice();
-    if(e.type==="main")choices=choices.concat(getSchoolChoices(state.scene));
+    el("opportunityBanner").hidden=e.type!=="opportunity";
+    if(e.type==="opportunity"){
+      el("opportunityText").textContent=e.warning||"本轮只能选择一个机会申请。";
+    }
+
+    if(e.type==="school")el("effectHint").textContent="这是 "+school.name+" 的院校专属事件；换学校可能完全不会出现。";
+    else if(e.type==="key")el("effectHint").textContent="关键节点不会随机替你做决定。请根据你的当前属性、天赋和想走的路线选择。";
+    else if(e.type==="opportunity")el("effectHint").textContent="成功率不是固定抽奖：你的知识、科研、英语、沟通、动手与既往经历会参与判定。";
+    else if(["side","random"].indexOf(e.type)>=0)el("effectHint").textContent="完成支线后会回到原来的主线，但留下的属性和隐藏经历会继续影响后面。";
+    else el("effectHint").textContent="不同学校、早期路线和过去的关键选择，会让后面的可选项逐渐不同。";
 
     var box=el("choices");
     box.innerHTML="";
-    choices.forEach(function(c){
+    e.choices.forEach(function(c){
       var ok=requirementsMet(c.requires);
       var b=document.createElement("button");
       b.className="choice-btn";
       b.disabled=!ok;
       var sub=ok?c.sub:"条件不足："+requirementText(c.requires);
-      var marker=(c.profile?"【院校专属】":"");
-      b.innerHTML="<b>"+marker+escapeHtml(c.text)+"</b><small>"+escapeHtml(sub)+"</small>";
+      var meta="";
+      if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
+      if(c.application)meta+="<span class=\"choice-meta\">只能申请一个 · "+escapeHtml(c.application)+"</span>";
+      b.innerHTML="<b>"+escapeHtml(c.text)+"</b><small>"+escapeHtml(sub)+"</small>"+meta;
       b.addEventListener("click",function(){choose(c);});
       box.appendChild(b);
     });
@@ -558,31 +580,34 @@
 
   function evaluateEnding(){
     var s=state.stats,school=currentSchool(),prefix=school?"从 "+school.name+" 出发，":"";
-    if(state.flags.has("platformJump"))prefix+="你曾通过升学完成一次平台跃迁。";
-    if(state.flags.has("academicianTrack")&&s.research>=78&&s.reputation>=70)
-      return ["顶尖学者 / 院士路线",prefix+"你把大量人生投入到科研、团队和学术共同体。最终，你成为领域的重要坐标之一。"];
-    if(state.flags.has("director")&&s.reputation>=72)
-      return ["科主任 / 学科带头人",prefix+"你不只会看病，也开始决定一个科室怎样培养年轻医生、怎样分配资源、怎样承担责任。"];
-    if(state.flags.has("expert")&&s.knowledge>=75)
-      return ["一线临床专家",prefix+"复杂病例不断被送到你面前。你的价值不只是一串论文，而是那句：这个病人交给你，我放心。"];
-    if(state.flags.has("lifeTrack")&&s.mental>=65)
-      return ["长期主义医生",prefix+"你没有把全部人生献祭给职称表格。你依然是一名可靠的医生，也保住了生活、关系和自我。"];
-    if(s.research>=65)return ["研究型主任医师",prefix+"你在临床之外建立了稳定科研方向。"];
-    if(s.reputation>=60)return ["口碑型主任医师",prefix+"患者、学生和同事长期记得你的可靠。"];
-    return ["普通但真实的医生",prefix+"你没有成为传奇，也没有失败。你完成了漫长训练，并承担一名医生每天该承担的工作。"];
+    if(state.flags.has("phdOverseas")||state.flags.has("phdDomestic")||state.flags.has("directPhdOffer"))prefix+="你完成了博士阶段；";
+    else if(state.flags.has("clinicalMaster")||state.flags.has("academicMaster"))prefix+="你完成了硕士阶段；";
+    else if(state.flags.has("noMaster"))prefix+="你选择本科后更早进入临床；";
+
+    if(state.flags.has("academicianTrack")&&s.research>=76&&s.reputation>=68)
+      return ["学术带头人 / 顶尖学者路线",prefix+"你最终把科研、团队和学术共同体建设成职业核心。"];
+    if(state.flags.has("director")&&s.reputation>=68)
+      return ["科主任 / 管理与学科建设路线",prefix+"你从一个被培养的医学生，走到开始培养别人、配置资源和承担组织责任的位置。"];
+    if(state.flags.has("expert")&&s.knowledge>=72)
+      return ["一线临床专家",prefix+"复杂病例和关键技术最终成为你的职业标签。"];
+    if(state.flags.has("lifeTrack")&&s.mental>=62)
+      return ["长期主义医生",prefix+"你的晋升不是最快，但你保住了职业、生活和自我。"];
+    if(s.research>=65)return ["研究型医生",prefix+"科研成为你职业中最明显的第二条主线。"];
+    if(s.reputation>=60)return ["口碑型临床医生",prefix+"你未必拥有最耀眼的头衔，但患者和同事长期记得你的可靠。"];
+    return ["普通但真实的医生",prefix+"你没有成为传奇，也没有失败。医学人生最终由许多普通而重要的决定组成。"];
   }
 
   function humanFlag(flag){
     var map={
-      gaokaoTop:"高考高分局",underdogStart:"逆风开局",ambitious:"目标明确",balanced:"生活派",pragmatic:"现实派",
-      humanism:"人文关怀",steady:"稳定学习",earlyResearch:"早期科研",clinicalFirst:"临床优先",doubleTrack:"双线发展",
-      communication:"沟通能力",clinicalCourage:"临床勇气",academic:"学术路线",integrity:"科研诚信",teamPlayer:"团队协作",
-      solidResident:"扎实规培",selfCare:"自我保护",dutyFirst:"责任优先",researchTrack:"科研晋升",clinicalTrack:"临床专家",
-      lifeTrack:"长期主义",familyTime:"家庭优先",director:"管理路线",expert:"专家路线",academicianTrack:"学术巅峰",
-      campusLove:"校园恋爱",studentLeader:"学生干部",competition:"竞赛经历",researchResilience:"科研韧性",
-      authorshipSpeakUp:"维护署名权益",grantPersistence:"基金再战",surgery:"外科路线",internalMedicine:"内科路线",
-      imaging:"影像平台科室",signatureOpportunity:"抓住院校机会",crossDiscipline:"交叉医学",earlyClinical:"早临床",
-      platformJump:"平台跃迁",selfMadeOpportunity:"主动争取资源",researchRotation:"科研轮转",aiMedicine:"医学AI"
+      gaokaoTop:"高考高分局",underdogStart:"逆风开局",humanism:"人文关怀",earlyResearch:"早期科研",earlyClinical:"早临床",
+      ugResearch:"本科科研线",ugClinical:"本科临床线",ugBalanced:"本科均衡线",ugGlobal:"本科国际线",
+      majorScholarship:"本科奖学金",ugExchange:"本科海外交流",studentPI:"本科项目负责人",clinicalCompetition:"临床技能竞赛",
+      recommended:"推免成功",gradExam:"考研路线",platformJump:"平台跃迁",platformJumpBig:"大幅平台跃迁",secondTrySuccess:"二战上岸",
+      clinicalMaster:"临床专硕",academicMaster:"学硕",directPhdOffer:"直博",overseasOffer:"海外升学",
+      phdDomestic:"国内博士",phdOverseas:"海外博士",noPhd:"未读博",noMaster:"本科后就业",postdoc:"博后",
+      masterScholarship:"研究生奖学金",jointTraining:"联合培养",keyProject:"重点项目",phdJoint:"博士联合培养",
+      youthGrant:"青年基金",visitingScholar:"海外访问",clinicalFellowship:"临床进修",youngTalent:"青年人才项目",
+      researchTrack:"科研晋升",clinicalTrack:"临床专家",lifeTrack:"长期主义",director:"管理路线",expert:"临床专家",academicianTrack:"学术路线"
     };
     return map[flag]||null;
   }
@@ -590,7 +615,7 @@
   function showEnding(type){
     state.finished=true;
     var ending=type==="burnout"
-      ?["提前离开临床","长期透支终于超过了承受范围。离开不等于失败——这是这条时间线的终点，也是另一条人生线的起点。"]
+      ?["提前离开当前医学路径","长期透支超过了承受范围。这个结局不是对人的评价，只代表这条游戏时间线在这里改变了方向。"]
       :evaluateEnding();
     showOnly("endingScreen");
     el("endingTitle").textContent=ending[0];
@@ -598,7 +623,7 @@
     el("endingStats").innerHTML=statKeys.map(function(k){
       return "<div class=\"ending-stat\"><span>"+statNames[k]+"</span><strong>"+state.stats[k]+"</strong></div>";
     }).join("");
-    var tags=Array.from(state.flags).map(humanFlag).filter(Boolean).slice(0,12);
+    var tags=Array.from(state.flags).map(humanFlag).filter(Boolean).slice(0,14);
     el("endingTags").innerHTML=tags.map(function(tag){return "<span class=\"ending-tag\">"+escapeHtml(tag)+"</span>";}).join("");
     saveState();window.scrollTo({top:0,behavior:"smooth"});
   }
@@ -620,6 +645,9 @@
     state.visitedSide=new Set(raw.visitedSide||[]);
     state.pendingNext=raw.pendingNext||null;
     state.profileId=raw.profileId||profileIdForSchool(schoolById(raw.schoolId));
+    state.applications=raw.applications||{};
+    state.route=raw.route||"本科·未分流";
+    state.signaturePending=!!raw.signaturePending;
     if(!raw.talents)state.talents=generateTalents(raw.score||620,schoolById(raw.schoolId),currentProfile());
     selectedDifficulty=state.difficulty||"normal";
     pendingName=state.name||"";
