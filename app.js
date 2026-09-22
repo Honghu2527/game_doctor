@@ -52,6 +52,9 @@
       el(x).hidden=x!==id;
     });
     renderJourneyRibbon(id);
+    if(id!=="gameScreen"){
+      document.body.setAttribute("data-stage-bg",id==="endingScreen"&&state?stageBackgroundKey():"undergrad");
+    }
   }
 
   function schoolById(id){return SCHOOL_DATA.schools.find(function(s){return s.id===id;});}
