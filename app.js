@@ -1738,6 +1738,9 @@
     var next=choice.next;
     if(success===true&&choice.successNext)next=choice.successNext;
     if(success===false&&choice.failNext)next=choice.failNext;
+    if(state.flags.has("clinicalMaster")&&/^edu_phd_|phd_year1|direct_phd/.test(next||"")){
+      state.flags.add("integratedResidencyFinished");
+    }
     syncPublicationMilestones(state.scene,next);
 
     if(next==="__END__"){showEnding();return;}
