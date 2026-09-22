@@ -866,7 +866,7 @@
       crisisWarningVersion:2,
       adRewardsClaimed:0,
       reviveCount:0,
-      freeReviveUsed:false,
+      shareReviveUsed:false,
       adReviveUsed:false,
       shareNudgeVisible:false,
       hintScene:null,
@@ -2098,7 +2098,7 @@
   function reviveStatus(){
     return {
       count:state&&state.reviveCount||0,
-      freeUsed:!!(state&&state.freeReviveUsed),
+      shareUsed:!!(state&&state.shareReviveUsed),
       adUsed:!!(state&&state.adReviveUsed)
     };
   }
@@ -2108,20 +2108,20 @@
     var show=!!state.shareNudgeVisible&&!state.finished;
     el("reviveShareBanner").hidden=!show;
     if(show){
-      el("reviveShareText").textContent="本局已经复活 "+(state.reviveCount||0)+" / 2 次。分享这一局不会增加复活次数，也不会改变任何游戏奖励。";
+      el("reviveShareText").textContent="本局唯一一次复活机会已经使用。再次死亡将直接进入结局；分享这一局不会再增加复活次数。";
     }
   }
 
   function performRevive(method){
     if(!pendingChoiceContinuation||!currentCrisisStat||!state)return false;
     var rs=reviveStatus();
-    if(rs.count>=2)return false;
-    if(method==="free"&&rs.freeUsed)return false;
+    if(rs.count>=1)return false;
+    if(method==="share"&&rs.shareUsed)return false;
     if(method==="ad"&&rs.adUsed)return false;
 
-    if(method==="free")state.freeReviveUsed=true;
+    if(method==="share")state.shareReviveUsed=true;
     if(method==="ad")state.adReviveUsed=true;
-    state.reviveCount=(state.reviveCount||0)+1;
+    state.reviveCount=1;
 
     var stat=currentCrisisStat;
     state.stats[stat]=Math.max(Number(state.stats[stat]||0),25);
@@ -2130,18 +2130,48 @@
     state.crisisWarned=state.crisisWarned||{energy:false,mental:false};
     state.crisisWarned.energy=false;
     state.crisisWarned.mental=false;
-    state.shareNudgeVisible=true;
+    state.shareNudgeVisible=method==="ad";
 
-    addLog("人生复活",(method==="free"?"使用本局唯一一次免费复活":"完整观看激励视频后复活")+"。本局已复活 "+state.reviveCount+" / 2 次。");
+    addLog("人生复活",(method==="share"?"完成分享后复活":"完整观看激励视频后复活")+"。本局唯一一次复活机会已经使用。");
     closeCrisis();
     saveState();
     resumePendingChoice();
     return true;
   }
 
+  function requestShareRevive(button){
+    if(rewardBusy||!SHARE_SERVICE||!pendingChoiceContinuation)return;
+    if((state.reviveCount||0)>=1||state.shareReviveUsed)return;
+    rewardBusy=true;
+    var oldText=button&&button.textContent;
+    if(button){button.disabled=true;button.textContent="正在打开分享…";}
+
+    var title=state.name+"的医学人生｜需要一次重来的机会";
+    var pub=publicationSummary();
+    var text=state.name+"这一局走到了「"+((allEvents()[state.scene]||{}).stage||"当前阶段")+"」，科研成果 SCI "+pub.total+" 篇。你也来试试自己的医学人生路线。";
+    SHARE_SERVICE.prepareWechatMenu();
+
+    SHARE_SERVICE.share({title:title,text:text}).then(function(res){
+      if(res&&res.ok){
+        performRevive("share");
+      }else{
+        addLog("复活失败","本次未完成分享，唯一复活机会仍然保留。");
+      }
+    }).catch(function(){
+      addLog("复活失败","分享没有完成，唯一复活机会仍然保留。");
+    }).then(function(){
+      rewardBusy=false;
+      if(button&&!el("crisisOverlay").hidden){
+        button.disabled=false;
+        button.textContent=oldText||"分享复活";
+      }
+      saveState();
+    });
+  }
+
   function requestAdRevive(button){
     if(rewardBusy||!AD_SERVICE||!pendingChoiceContinuation)return;
-    if((state.reviveCount||0)>=2||state.adReviveUsed)return;
+    if((state.reviveCount||0)>=1||state.adReviveUsed)return;
     rewardBusy=true;
     var oldText=button&&button.textContent;
     if(button){button.disabled=true;button.textContent="正在加载激励视频…";}
@@ -2149,15 +2179,15 @@
       if(res&&res.completed){
         performRevive("ad");
       }else{
-        addLog("复活失败","激励视频未完整观看，本次不消耗广告复活机会。");
+        addLog("复活失败","激励视频未完整观看，本次不消耗唯一复活机会。");
       }
     }).catch(function(){
-      addLog("复活失败","当前激励视频暂不可用，广告复活机会仍然保留。");
+      addLog("复活失败","当前激励视频暂不可用，唯一复活机会仍然保留。");
     }).then(function(){
       rewardBusy=false;
       if(button&&!el("crisisOverlay").hidden){
         button.disabled=false;
-        button.textContent=oldText||"看广告复活";
+        button.textContent=oldText||"看视频复活";
       }
       saveState();
     });
@@ -2171,7 +2201,7 @@
     SHARE_SERVICE.prepareWechatMenu();
     SHARE_SERVICE.share({title:title,text:text}).then(function(res){
       if(res&&res.ok){
-        addLog("分享","已打开分享/复制入口。分享不会增加复活次数，也不会改变游戏奖励。");
+        addLog("分享","已打开分享/复制入口。");
         state.shareNudgeVisible=false;
         saveState();
         if(!state.finished)renderReviveShareBanner();
@@ -2188,36 +2218,33 @@
     var locked=isCompetitiveScene(state.scene,current);
     var rs=reviveStatus();
 
+    /* Second death: no revive modal, end immediately. */
+    if(rs.count>=1){
+      pendingChoiceContinuation=null;
+      currentCrisisStat=null;
+      addLog("本局结束","本局唯一一次复活机会已经使用，再次状态归零，直接进入结局。");
+      showEnding("burnout");
+      return;
+    }
+
     el("crisisIcon").textContent=stat==="energy"?"⚡":"🧠";
     el("crisisTitle").textContent=(stat==="energy"?"体力":"心理")+"已经耗尽";
 
     if(locked){
-      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，复活与广告不会介入这一竞争流程；如果确认，本局将在这里结束。";
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，分享和广告复活不会介入这一竞争结果；确认后本局结束。";
       el("crisisUseBtn").hidden=true;
       el("crisisAdBtn").hidden=true;
-    }else if(rs.count>=2){
-      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。本局两次复活机会已经全部用完，现在只能接受这一条时间线的结局。";
-      el("crisisUseBtn").hidden=true;
-      el("crisisAdBtn").hidden=true;
-    }else if(!rs.freeUsed){
-      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你可以使用本局唯一一次免费复活，将状态拉回安全线后继续；本局最多复活 2 次。";
+    }else{
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。本局只有 1 次复活机会：你可以选择「分享复活」或「看激励视频复活」，二选一。复活后如果再次死亡，将直接进入结局。";
       el("crisisUseBtn").hidden=false;
       el("crisisUseBtn").disabled=false;
-      el("crisisUseBtn").textContent="免费复活 · 第 1 / 2 次";
-      el("crisisAdBtn").hidden=true;
-    }else if(!rs.adUsed){
-      el("crisisText").textContent="这次选择让"+statNames[stat]+"再次降到了 0。免费复活已经使用；你还剩最后一次激励视频复活机会。";
-      el("crisisUseBtn").hidden=true;
+      el("crisisUseBtn").textContent="分享复活 · 本局唯一一次";
       el("crisisAdBtn").hidden=false;
       el("crisisAdBtn").disabled=false;
-      el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"观看广告")+" · 最后一次复活";
-    }else{
-      el("crisisText").textContent="本局两次复活机会已经全部使用，现在只能接受当前结局。";
-      el("crisisUseBtn").hidden=true;
-      el("crisisAdBtn").hidden=true;
+      el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"观看视频")+" · 复活";
     }
 
-    el("crisisContinueBtn").textContent="接受当前结局";
+    el("crisisContinueBtn").textContent="放弃复活，接受结局";
     el("crisisOverlay").hidden=false;
     document.body.classList.add("modal-open");
     saveState();
@@ -2667,9 +2694,10 @@
     state.crisisWarned=raw.crisisWarningVersion===2?(raw.crisisWarned||{energy:false,mental:false}):{energy:false,mental:false};
     state.crisisWarningVersion=2;
     state.adRewardsClaimed=raw.adRewardsClaimed||0;
-    state.reviveCount=raw.reviveCount||0;
-    state.freeReviveUsed=!!raw.freeReviveUsed;
+    state.reviveCount=Math.min(1,raw.reviveCount||0);
+    state.shareReviveUsed=!!raw.shareReviveUsed;
     state.adReviveUsed=!!raw.adReviveUsed;
+    if(raw.freeReviveUsed&&state.reviveCount>0)state.shareReviveUsed=true;
     state.shareNudgeVisible=!!raw.shareNudgeVisible;
     state.hintScene=raw.hintScene||null;
     state.specialtyId=raw.specialtyId||null;
@@ -2757,7 +2785,7 @@
   el("crisisUseBtn").addEventListener("click",function(){
     if(!currentCrisisStat)return;
     if(pendingChoiceContinuation){
-      performRevive("free");
+      requestShareRevive(this);
       return;
     }
     useItem(currentCrisisStat==="energy"?"energy_card":"mental_card",{closeCrisis:true});
