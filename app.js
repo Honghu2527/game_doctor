@@ -8,6 +8,7 @@
   var CAREER_DATA=window.CAREER_DATA;
   var COLLEGE_DATA=window.COLLEGE_DATA;
   var SPECIALTY_DATA=window.SPECIALTY_DATA;
+  var EDUCATION_DATA=window.EDUCATION_DATA;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var BOARD=window.MESSAGE_BOARD;
   var DIFFICULTIES=DATA.difficulties;
@@ -15,7 +16,7 @@
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
   var ORDER=CAREER_DATA.order.concat(COLLEGE_DATA?COLLEGE_DATA.order:[]);
-  var SAVE_KEY="doctor-life-sim-v08";
+  var SAVE_KEY="doctor-life-sim-v09";
   var BOARD_KEY="doctor-life-message-wall-v1";
 
   var state=null;
@@ -64,6 +65,67 @@
   function currentSpecialtyName(){
     var s=currentSpecialty();
     return s?s.name:"尚未选择";
+  }
+
+  function currentInstitutionName(){
+    if(!state)return "—";
+    var h=state.educationHistory||{};
+    if((state.flags.has("phdDomestic")||state.flags.has("phdOverseas")||state.flags.has("directPhdOffer"))&&h.phd)return h.phd.schoolName;
+    if((state.flags.has("clinicalMaster")||state.flags.has("academicMaster")||state.flags.has("overseasOffer"))&&h.master)return h.master.schoolName;
+    return h.undergrad?h.undergrad.schoolName:(currentSchool()?currentSchool().name:"—");
+  }
+
+  function scrollAfterRender(){
+    window.requestAnimationFrame(function(){
+      var game=el("gameScreen");
+      if(game&&!game.hidden){
+        var panel=document.querySelector(".story-panel");
+        if(panel){
+          var top=window.scrollY+panel.getBoundingClientRect().top-12;
+          window.scrollTo({top:Math.max(0,top),behavior:"smooth"});
+          return;
+        }
+      }
+      scrollAfterRender();
+    });
+  }
+
+  function stageBackgroundKey(){
+    if(!state)return "undergrad";
+    var scene=state.scene||"";
+    var spec=state.specialtyId||"";
+    if(/^fresh_|white_coat|key_undergrad|ug_|clinical_exposure|key_graduation/.test(scene))return "undergrad";
+    if(/^edu_|grad_exam|exam_fail|recommended/.test(scene))return "undergrad";
+    if(state.flags.has("academicMaster")||/^phd_|direct_phd/.test(scene))return "research";
+    if(spec==="surgery"||spec==="obgyn")return "surgery";
+    if(spec==="radiology")return "radiology";
+    if(spec==="nuclear")return "nuclear";
+    if(spec==="pathology")return "research";
+    if(state.flags.has("clinicalMaster")||/^resident_|job_choice|young_attending|career_|key_midcareer|promotion|director/.test(scene)){
+      return spec==="internal"?"internal":"hospital";
+    }
+    return "undergrad";
+  }
+
+  function applyStageBackground(){
+    document.body.setAttribute("data-stage-bg",stageBackgroundKey());
+  }
+
+  function renderEducationTimeline(){
+    if(!state||!el("educationTimeline"))return;
+    var h=state.educationHistory||{};
+    var items=[];
+    if(h.undergrad)items.push({level:h.undergrad.level||"本科",school:h.undergrad.schoolName,detail:h.undergrad.major||"临床医学"});
+    if(h.master)items.push({level:"硕士",school:h.master.schoolName,detail:[h.master.type,h.master.specialty].filter(Boolean).join(" · ")});
+    if(h.phd)items.push({level:"博士",school:h.phd.schoolName,detail:[h.phd.type,h.phd.specialty,h.phd.direction].filter(Boolean).join(" · ")});
+    (h.overseas||[]).forEach(function(x){
+      if(!items.some(function(i){return i.level===x.level&&i.school===x.schoolName;})){
+        items.push({level:x.level||"海外经历",school:x.schoolName,detail:x.detail||x.region||""});
+      }
+    });
+    el("educationTimeline").innerHTML=items.map(function(x,index){
+      return "<div class=\"education-stop\"><b>"+escapeHtml(x.level)+"</b><strong>"+escapeHtml(x.school)+"</strong><span>"+escapeHtml(x.detail)+"</span>"+(index<items.length-1?"<i>→</i>":"")+"</div>";
+    }).join("");
   }
 
   function journeyPhaseForState(){
@@ -241,7 +303,7 @@
     pendingName=el("playerName").value.trim()||"无名医学生";
     pendingBackground=compileBackground(readBirthSelection());
     resetGaokao();showOnly("gaokaoScreen");el("restartBtn").hidden=false;
-    window.scrollTo({top:0,behavior:"smooth"});
+    scrollAfterRender();
   }
 
   function broadScore(){
@@ -374,7 +436,7 @@
     var band=getBand(rollingScore);
     el("bandCard").innerHTML="<strong>"+escapeHtml(band.label)+" · 可报："+allowedEducationLevels(rollingScore).join(" / ")+"</strong><span>"+escapeHtml(band.note)+" "+escapeHtml(educationRuleText(rollingScore))+"</span>";
     renderSchoolGrid();
-    window.scrollTo({top:0,behavior:"smooth"});
+    scrollAfterRender();
   }
 
   function directApply(stats,effects){
@@ -432,7 +494,7 @@
     var profileId=profileIdForSchool(school);
 
     state={
-      version:8,
+      version:9,
       name:pendingName,
       background:bg,
       difficulty:selectedDifficulty,
@@ -446,6 +508,12 @@
       pendingNext:(school.educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[profileId]||"fresh_growth"),
       visitedSide:new Set(),
       applications:{},
+      educationHistory:{
+        undergrad:{schoolId:school.id,schoolName:school.name,level:school.educationLevel||"本科",major:school.program||"临床医学"},
+        master:null,phd:null,overseas:[]
+      },
+      eduApplication:null,
+      pendingAdmissionResult:null,
       specialtyId:null,
       specialtyReturnNext:null,
       route:(school.educationLevel==="专科"?"专科·未分流":"本科·未分流"),
@@ -495,13 +563,13 @@
     renderTalents();
 
     showOnly("letterScreen");saveState();
-    window.scrollTo({top:0,behavior:"smooth"});
+    scrollAfterRender();
   }
 
   function enterUniversity(){
     if(!state)return;
     showOnly("gameScreen");el("restartBtn").hidden=false;render();
-    window.scrollTo({top:0,behavior:"smooth"});
+    scrollAfterRender();
   }
 
   function schoolPressure(){
@@ -722,6 +790,394 @@
     };
   }
 
+
+  function findEduSchool(id){
+    if(!EDUCATION_DATA)return null;
+    var pools=["masterDomestic","masterOverseas","phdDomestic","phdOverseas"];
+    for(var i=0;i<pools.length;i++){
+      var found=(EDUCATION_DATA[pools[i]]||[]).find(function(s){return s.id===id;});
+      if(found)return found;
+    }
+    return null;
+  }
+
+  function eduSchoolChoices(list,nextScene){
+    return (list||[]).map(function(s){
+      return {
+        text:s.name,
+        sub:(s.city||s.region||"")+" · 申请难度 "+stars(s.difficulty||3)+(s.tags?" · "+s.tags.join(" / "):""),
+        eduSchoolId:s.id,
+        next:nextScene
+      };
+    });
+  }
+
+  function eduSpecialtyChoices(nextScene){
+    return Object.keys(SPECIALTY_DATA.specialties).map(function(id){
+      var s=SPECIALTY_DATA.specialties[id];
+      return {
+        text:s.icon+" "+s.name,
+        sub:s.desc,
+        eduSpecialtyId:id,
+        next:nextScene,
+        specialtyMetrics:s.metrics
+      };
+    });
+  }
+
+  function educationApplicationEvent(){
+    if(!state||!EDUCATION_DATA||state.scene.indexOf("edu_")!==0)return null;
+    var scene=state.scene;
+    var a=state.eduApplication||{};
+
+    if(scene==="edu_master_recommend_type"||scene==="edu_master_exam_type"){
+      var source=scene==="edu_master_recommend_type"?"recommend":"exam";
+      return {
+        stage:source==="recommend"?"推免申请 · 选择培养类型":"考研申请 · 选择培养类型",year:"23岁",title:"先决定你申请哪一种硕士",type:"educationApply",critical:true,
+        warning:"临床专硕与规培并轨；学硕以科研训练为主。两者后面的生活完全不同。",
+        text:"录取不是一个按钮。你还需要选择学校、专业/科室，完成准备与复试，然后等待最终结果。",
+        choices:[
+          {text:"临床医学专业型硕士",sub:"研究生培养与规培并轨，临床训练和毕业要求同时推进。",eduStart:{level:"master",source:source},eduMasterType:"clinical_master",effects:{knowledge:2},next:"edu_master_school"},
+          {text:"学术型硕士",sub:"科研训练优先，不自动完成规培；以后回临床需要再衔接规培。",eduStart:{level:"master",source:source},eduMasterType:"academic_master",effects:{research:2},next:"edu_master_school"}
+        ]
+      };
+    }
+
+    if(scene==="edu_master_school"){
+      return {stage:"硕士申请 1/5 · 目标院校",year:"23岁",title:"选择你的目标硕士院校",type:"educationSchool",
+        text:"学校越难，录取概率越低，但平台和后续机会也可能更强。以下难度仅用于游戏。",
+        choices:eduSchoolChoices(EDUCATION_DATA.masterDomestic,"edu_master_specialty")};
+    }
+
+    if(scene==="edu_master_specialty"){
+      return {stage:"硕士申请 2/5 · 专业方向",year:"23岁",title:"选择报考专业 / 科室",type:"educationApply",
+        text:"这一步不仅影响复试，也会在录取后决定你的专属训练事件池。",
+        choices:eduSpecialtyChoices("edu_master_prepare")};
+    }
+
+    if(scene==="edu_master_prepare"){
+      var rec=a.source==="recommend";
+      return {stage:"硕士申请 3/5 · "+(rec?"材料准备":"初试备考"),year:"23岁",title:rec?"推免材料最后怎么准备？":"备考进入最后阶段",type:"educationApply",
+        text:rec?"成绩、科研、推荐和面试材料都要在有限时间里完成。":"专业课、英语和临床实习同时抢你的时间。",
+        choices:[
+          {text:rec?"集中打磨科研与个人陈述":"全力冲刺，压缩实习和社交",sub:"准备增益最高，但消耗最大。",effects:{knowledge:rec?2:7,research:rec?5:1,energy:-6,mental:-3},eduPrepAdd:22,next:"edu_master_interview"},
+          {text:rec?"突出综合表现与推荐":"课程、实习和备考保持平衡",sub:"更稳健，但峰值准备略低。",effects:{knowledge:4,reputation:3,energy:-4},eduPrepAdd:15,next:"edu_master_interview"},
+          {text:rec?"主打临床经历":"保住状态，重点抓高频内容",sub:"消耗最低，结果更依赖已有基础。",effects:{knowledge:3,reputation:2,mental:2},eduPrepAdd:9,next:"edu_master_interview"}
+        ]
+      };
+    }
+
+    if(scene==="edu_master_interview"){
+      return {stage:"硕士申请 4/5 · 复试 / 面试",year:"23岁",title:"老师开始问你：为什么选择这个专业？",type:"educationApply",
+        text:"目标学校、专业、前期准备和现场表达都会影响最后的录取概率。",
+        choices:[
+          {text:"结构化回答：临床兴趣 + 未来规划",sub:"知识与沟通更加重要。",effects:{mental:-2,reputation:2},talentEffects:{communication:1},eduPrepAdd:10,next:"edu_master_result"},
+          {text:"重点讲科研经历和问题意识",sub:"科研型履历更占优势。",effects:{mental:-2,research:2},talentEffects:{researchSense:1},eduPrepAdd:10,next:"edu_master_result"},
+          {text:"诚实回答不足，但说明如何补齐",sub:"抗压和表达决定效果。",effects:{mental:-1},talentEffects:{resilience:1,communication:1},eduPrepAdd:7,next:"edu_master_result"}
+        ]
+      };
+    }
+
+    if(scene==="edu_master_result"){
+      return {stage:"硕士申请 5/5 · 录取查询",year:"23岁",title:"招生系统开放了",type:"educationResult",
+        text:"你的目标学校、专业和前面每一步准备已经锁定。现在只剩最后一件事：查询结果。",
+        choices:[{text:"查询硕士录取结果",sub:"点击后会进入 3 秒查询窗口，结果不会在倒计时期间重新抽取。",admissionQuery:"master"}]};
+    }
+
+    if(scene==="edu_master_overseas_school"){
+      if(!state.eduApplication||state.eduApplication.level!=="overseas_master")state.eduApplication={level:"overseas_master",source:"overseas",prep:0};
+      return {stage:"海外申请 1/5 · 目标院校",year:"23岁",title:"选择你要申请的海外院校",type:"educationSchool",
+        text:"不同国家和学校的实际项目设置差异很大；这里是游戏化研究型升学池。",
+        choices:eduSchoolChoices(EDUCATION_DATA.masterOverseas,"edu_master_overseas_specialty")};
+    }
+
+    if(scene==="edu_master_overseas_specialty"){
+      return {stage:"海外申请 2/5 · 医学方向",year:"23岁",title:"你希望围绕哪个医学方向申请？",type:"educationApply",
+        text:"方向会写入你的教育档案，并影响后续科研/职业事件。",
+        choices:eduSpecialtyChoices("edu_master_overseas_direction")};
+    }
+
+    if(scene==="edu_master_overseas_direction"){
+      return {stage:"海外申请 3/5 · 研究方向",year:"23岁",title:"选择更具体的研究方向",type:"educationApply",
+        text:"海外研究型项目更看重研究匹配度、英语、推荐与既往经历。",
+        choices:EDUCATION_DATA.researchDirections.map(function(d){
+          return {text:d.name,sub:d.desc,eduDirectionId:d.id,effects:{research:2},next:"edu_master_overseas_prepare"};
+        })
+      };
+    }
+
+    if(scene==="edu_master_overseas_prepare"){
+      return {stage:"海外申请 4/5 · 材料与面试",year:"23岁",title:"CV、推荐信和个人陈述怎么分配精力？",type:"educationApply",
+        text:"你不可能把所有材料都做到无限精细。",
+        choices:[
+          {text:"强推研究匹配与已有成果",sub:"科研和导师匹配优先。",effects:{research:4,energy:-5},eduPrepAdd:20,next:"edu_master_overseas_result"},
+          {text:"重点打磨英语表达和面试",sub:"提高现场表现。",effects:{energy:-4},talentEffects:{english:2,communication:2},eduPrepAdd:18,next:"edu_master_overseas_result"},
+          {text:"平衡准备，减少经济和时间消耗",sub:"更稳但峰值略低。",effects:{money:-2,mental:2},eduPrepAdd:11,next:"edu_master_overseas_result"}
+        ]
+      };
+    }
+
+    if(scene==="edu_master_overseas_result"){
+      return {stage:"海外申请 5/5 · Offer 查询",year:"23岁",title:"申请门户状态更新了",type:"educationResult",
+        text:"目标院校已经完成评审。现在查询最终结果。",
+        choices:[{text:"查询海外项目录取结果",sub:"3 秒后显示 Offer 或未录取。",admissionQuery:"overseas_master"}]};
+    }
+
+    if(scene==="edu_phd_domestic_school"||scene==="edu_phd_overseas_school"||scene==="edu_phd_direct_school"){
+      var sourcePhd=scene==="edu_phd_overseas_school"?"overseas":scene==="edu_phd_direct_school"?"direct":"domestic";
+      if(!state.eduApplication||state.eduApplication.level!=="phd"||state.eduApplication.source!==sourcePhd){
+        state.eduApplication={level:"phd",source:sourcePhd,prep:0};
+      }
+      var pool=sourcePhd==="overseas"?EDUCATION_DATA.phdOverseas:EDUCATION_DATA.phdDomestic;
+      return {stage:"博士申请 1/5 · 目标院校",year:sourcePhd==="direct"?"23-24岁":"26-28岁",
+        title:sourcePhd==="direct"?"选择直博目标院校":sourcePhd==="overseas"?"选择海外博士目标院校":"选择国内博士目标院校",type:"educationSchool",
+        text:"博士录取不会直接发生。学校难度、导师/方向匹配、科研积累、材料和面试都会参与最终判定。",
+        choices:eduSchoolChoices(pool,"edu_phd_specialty")};
+    }
+
+    if(scene==="edu_phd_specialty"){
+      return {stage:"博士申请 2/5 · 学科方向",year:"博士申请阶段",title:"博士阶段准备在哪个医学学科继续？",type:"educationApply",
+        text:"你可以沿用硕士方向，也可以在申博时改变学科。",
+        choices:eduSpecialtyChoices("edu_phd_direction")};
+    }
+
+    if(scene==="edu_phd_direction"){
+      return {stage:"博士申请 3/5 · 研究方向",year:"博士申请阶段",title:"你准备把博士几年押在哪类问题上？",type:"educationApply",
+        text:"研究方向会影响导师匹配、申请概率和之后博士事件。",
+        choices:EDUCATION_DATA.researchDirections.map(function(d){
+          return {text:d.name,sub:d.desc,eduDirectionId:d.id,effects:{research:3,energy:-1},eduPrepAdd:6,next:"edu_phd_prepare"};
+        })
+      };
+    }
+
+    if(scene==="edu_phd_prepare"){
+      return {stage:"博士申请 4/5 · 导师与材料",year:"博士申请阶段",title:"联系导师以后，对方回复：请发一份研究计划",type:"educationApply",
+        text:"论文只是材料之一。导师匹配、研究计划、推荐和既往成果共同决定你能不能进入面试。",
+        choices:[
+          {text:"针对导师方向重写研究计划",sub:"匹配度最高，也最耗时间。",effects:{research:4,energy:-5,mental:-2},eduPrepAdd:22,next:"edu_phd_interview"},
+          {text:"突出自己已有成果与独立性",sub:"已有科研越强越有利。",effects:{research:3,reputation:2,energy:-4},eduPrepAdd:17,next:"edu_phd_interview"},
+          {text:"强调临床问题与转化价值",sub:"知识、临床和沟通更重要。",effects:{knowledge:3,reputation:3,energy:-3},eduPrepAdd:14,next:"edu_phd_interview"}
+        ]
+      };
+    }
+
+    if(scene==="edu_phd_interview"){
+      return {stage:"博士申请 5/6 · 面试",year:"博士申请阶段",title:"面试老师问：如果你的核心假设错了怎么办？",type:"educationApply",
+        text:"博士面试更看问题意识、科研独立性和应对不确定性的能力。",
+        choices:[
+          {text:"解释替代假设和备选实验",sub:"科研直觉与逻辑优先。",effects:{research:2,mental:-2},talentEffects:{researchSense:2},eduPrepAdd:11,next:"edu_phd_result"},
+          {text:"承认风险，并说明如何缩小问题",sub:"强调可行性与韧性。",effects:{mental:-1},talentEffects:{resilience:2},eduPrepAdd:9,next:"edu_phd_result"},
+          {text:"把问题重新拉回临床意义",sub:"适合转化/临床研究方向。",effects:{knowledge:2,reputation:2},talentEffects:{communication:1},eduPrepAdd:8,next:"edu_phd_result"}
+        ]
+      };
+    }
+
+    if(scene==="edu_phd_result"){
+      return {stage:"博士申请 6/6 · 录取查询",year:"博士申请阶段",title:"博士申请系统状态变成：Decision Available",type:"educationResult",
+        text:"导师、院校、研究方向、科研积累和面试已经全部进入最终结果。",
+        choices:[{text:"查询博士录取结果",sub:"3 秒后显示正式结果。",admissionQuery:"phd"}]};
+    }
+
+    if(scene==="edu_phd_fail"){
+      return {stage:"博士申请 · 未录取后",year:"博士申请阶段",title:"这一次没有拿到博士录取",type:"key",critical:true,
+        warning:"申博失败不会自动让你失去硕士学历和已有临床/科研积累。",
+        text:"你可以换学校再申请，也可以结束学生身份进入下一阶段。",
+        choices:[
+          {text:"换一所学校再申请",sub:"保留原来的科研积累，但重新选择目标院校。",effects:{mental:-2,energy:-2},flags:["phdRetry"],next:(a.source==="overseas"?"edu_phd_overseas_school":"edu_phd_domestic_school")},
+          {text:"停止申博，临床专硕毕业去工作",sub:"已经完成并轨规培，直接进入求职。",showIfFlags:["clinicalMaster"],effects:{mental:4,money:3},flags:["noPhd"],next:"clinical_master_finish"},
+          {text:"停止申博，学硕毕业回临床规培",sub:"先选/沿用科室，再进入规培。",showIfFlags:["academicMaster"],effects:{mental:4,money:2},flags:["noPhd"],next:"resident_entry"},
+          {text:"转向科研助理 / 研究岗位",sub:"先积累成果，未来仍可再次申请。",effects:{research:5,money:2,mental:2},flags:["researchJob"],next:"young_attending"}
+        ]
+      };
+    }
+
+    return null;
+  }
+
+  function educationAdmissionProbability(){
+    var a=state.eduApplication||{},school=a.school||{},difficulty=school.difficulty||3;
+    var p=0.68-difficulty*0.075;
+    if(a.level==="master"){
+      p+=(metricValue("knowledge")-50)/250;
+      p+=(metricValue("english")-50)/520;
+      p+=(metricValue("reputation")-50)/650;
+      if(a.masterType==="academic_master")p+=(metricValue("research")-50)/380;
+      if(a.source==="recommend")p+=0.08;
+      if(state.flags.has("secondTry"))p+=0.05;
+    }else if(a.level==="overseas_master"){
+      p=0.59-difficulty*0.065;
+      p+=(metricValue("english")-50)/250;
+      p+=(metricValue("research")-50)/360;
+      p+=(metricValue("communication")-50)/600;
+    }else if(a.level==="phd"){
+      p=0.57-difficulty*0.067;
+      p+=(metricValue("research")-50)/210;
+      p+=(metricValue("researchSense")-50)/330;
+      p+=(metricValue("reputation")-50)/500;
+      if(a.source==="overseas")p+=(metricValue("english")-50)/270;
+      if(a.source==="direct")p-=0.04;
+      if(state.flags.has("phdRetry"))p+=0.04;
+    }
+    p+=(a.prep||0)/260;
+    return clamp(p,.10,.90);
+  }
+
+  function admissionProgramLabel(a){
+    if(a.level==="master")return a.masterType==="clinical_master"?"临床医学专业型硕士":"学术型硕士";
+    if(a.level==="overseas_master")return "海外研究型硕士 / 研究项目";
+    if(a.level==="phd")return a.source==="direct"?"直博项目":a.source==="overseas"?"海外博士":"国内博士";
+    return "研究生项目";
+  }
+
+  function admissionSpecialtyLabel(a){
+    var s=a.specialtyId&&SPECIALTY_DATA.specialties[a.specialtyId];
+    return s?s.name:"医学相关方向";
+  }
+
+  function admissionDirectionLabel(a){
+    var d=(EDUCATION_DATA.researchDirections||[]).find(function(x){return x.id===a.directionId;});
+    return d?d.name:"";
+  }
+
+  function startAdmissionQuery(){
+    var a=state.eduApplication;
+    if(!a||!a.school)return;
+    var probability=educationAdmissionProbability();
+    var success=Math.random()<probability;
+    state.pendingAdmissionResult={
+      success:success,
+      probability:probability,
+      level:a.level,
+      source:a.source,
+      school:a.school,
+      masterType:a.masterType||null,
+      specialtyId:a.specialtyId||null,
+      directionId:a.directionId||null
+    };
+    saveState();
+
+    el("admissionOverlay").hidden=false;
+    el("admissionSearching").hidden=false;
+    el("admissionResult").hidden=true;
+    el("admissionQuerySchool").textContent="正在查询 "+a.school.name+" · "+admissionProgramLabel(a);
+    el("admissionCountdown").textContent="3";
+    el("admissionQueryBar").style.width="8%";
+    document.body.classList.add("modal-open");
+
+    var remaining=3;
+    var step=0;
+    var timer=setInterval(function(){
+      remaining-=1;step+=1;
+      el("admissionCountdown").textContent=Math.max(0,remaining);
+      el("admissionQueryBar").style.width=(8+step*30)+"%";
+      if(remaining<=0){
+        clearInterval(timer);
+        el("admissionQueryBar").style.width="100%";
+        setTimeout(revealAdmissionResult,260);
+      }
+    },900);
+  }
+
+  function revealAdmissionResult(){
+    var r=state.pendingAdmissionResult;
+    if(!r)return;
+    el("admissionSearching").hidden=true;
+    el("admissionResult").hidden=false;
+    var a=state.eduApplication||r;
+    var spec=admissionSpecialtyLabel(a);
+    var direction=admissionDirectionLabel(a);
+    el("admissionResult").classList.toggle("is-success",r.success);
+    el("admissionResult").classList.toggle("is-fail",!r.success);
+    el("admissionResultIcon").textContent=r.success?"✓":"×";
+    el("admissionResultTitle").textContent=r.success?"恭喜录取":"很遗憾，未被录取";
+    el("admissionResultText").textContent=r.success
+      ?("你已被 "+r.school.name+" "+admissionProgramLabel(a)+" 录取。")
+      :("这一次，"+r.school.name+" 没有向你发出录取通知。");
+    el("admissionResultMeta").innerHTML=
+      "<span>目标院校<strong>"+escapeHtml(r.school.name)+"</strong></span>"+
+      "<span>方向<strong>"+escapeHtml(spec+(direction?" · "+direction:""))+"</strong></span>"+
+      "<span>本局估算竞争概率<strong>"+Math.round(r.probability*100)+"%</strong></span>";
+    el("admissionResultBtn").textContent=r.success?"确认录取 · 写入教育档案":"确认结果 · 继续下一步";
+  }
+
+  function confirmAdmissionResult(){
+    var r=state&&state.pendingAdmissionResult;
+    if(!r)return;
+    var a=state.eduApplication||r;
+    var specObj=a.specialtyId&&SPECIALTY_DATA.specialties[a.specialtyId];
+    var specName=specObj?specObj.name:"医学相关方向";
+    var dirName=admissionDirectionLabel(a);
+
+    if(r.success){
+      if(a.level==="master"){
+        state.specialtyId=a.specialtyId;
+        state.flags.add("masterOffer");
+        if(a.source==="recommend")state.flags.add("recommended");
+        if(a.masterType==="clinical_master"){
+          state.flags.add("clinicalMaster");state.flags.add("integratedResidency");
+          state.route="研究生·"+r.school.name+"·"+specName+"临床专硕（并轨规培）";
+        }else{
+          state.flags.add("academicMaster");
+          state.route="研究生·"+r.school.name+"·"+specName+"学硕";
+        }
+        state.educationHistory.master={
+          schoolId:r.school.id,schoolName:r.school.name,type:a.masterType==="clinical_master"?"临床专硕（并轨规培）":"学术型硕士",
+          specialty:specName,region:r.school.city||"",source:a.source
+        };
+        addLog("硕士录取","被 "+r.school.name+" "+specName+" "+(a.masterType==="clinical_master"?"临床专硕":"学硕")+" 录取。");
+        state.specialtyReturnNext=a.masterType==="clinical_master"?"clinical_master":"academic_master";
+        state.scene=specObj?specObj.intro:(a.masterType==="clinical_master"?"clinical_master":"academic_master");
+      }else if(a.level==="overseas_master"){
+        state.specialtyId=a.specialtyId;
+        state.flags.add("overseasOffer");
+        state.route="海外升学·"+r.school.name+"·"+specName;
+        state.educationHistory.master={schoolId:r.school.id,schoolName:r.school.name,type:"海外研究型项目",specialty:specName,region:r.school.region||"",source:"overseas"};
+        state.educationHistory.overseas.push({level:"硕士/研究项目",schoolName:r.school.name,region:r.school.region||"",detail:specName+(dirName?" · "+dirName:"")});
+        addLog("海外录取","收到 "+r.school.name+" 的录取 Offer。");
+        state.scene="overseas_postgrad";
+      }else if(a.level==="phd"){
+        state.specialtyId=a.specialtyId;
+        if(a.source==="overseas")state.flags.add("phdOverseas");
+        else if(a.source==="direct")state.flags.add("directPhdOffer");
+        else state.flags.add("phdDomestic");
+        state.route="博士·"+r.school.name+"·"+specName;
+        state.educationHistory.phd={
+          schoolId:r.school.id,schoolName:r.school.name,type:a.source==="direct"?"直博":a.source==="overseas"?"海外博士":"国内博士",
+          specialty:specName,direction:dirName,region:r.school.city||r.school.region||""
+        };
+        if(a.source==="overseas")state.educationHistory.overseas.push({level:"博士",schoolName:r.school.name,region:r.school.region||"",detail:specName+(dirName?" · "+dirName:"")});
+        addLog("博士录取","被 "+r.school.name+" "+specName+" 博士项目录取。");
+        state.specialtyReturnNext=a.source==="direct"?"direct_phd":"phd_year1";
+        state.scene=specObj?specObj.intro:(a.source==="direct"?"direct_phd":"phd_year1");
+      }
+    }else{
+      if(a.level==="master"){
+        if(a.source==="recommend"){state.flags.add("recommendFailed");state.scene="edu_master_exam_type";}
+        else{state.flags.add("examFailed");state.scene="exam_fail_choice";}
+        applyEffects({mental:-5});
+        addLog("硕士未录取",r.school.name+" 本轮未录取。");
+      }else if(a.level==="overseas_master"){
+        state.flags.add("overseasRejected");
+        applyEffects({mental:-4,money:-2});
+        state.scene="edu_master_exam_type";
+        addLog("海外申请未录取",r.school.name+" 本轮未发出 Offer。");
+      }else if(a.level==="phd"){
+        if(a.source==="direct")state.flags.add("directPhdMiss");
+        else if(a.source==="overseas")state.flags.add("phdOverseasFail");
+        else state.flags.add("phdDomesticFail");
+        applyEffects({mental:-6});
+        state.scene=a.source==="direct"?"edu_master_exam_type":"edu_phd_fail";
+        addLog("博士未录取",r.school.name+" 本轮博士申请未录取。");
+      }
+    }
+
+    state.pendingAdmissionResult=null;
+    if(state.scene.indexOf("edu_")!==0)state.eduApplication=null;
+    el("admissionOverlay").hidden=true;
+    document.body.classList.remove("modal-open");
+    saveState();render();scrollAfterRender();
+  }
+
   function activeOpportunityEvent(){
     if(!state||!state.activeOpportunity||!OPPORTUNITY_DATA)return null;
     var flow=OPPORTUNITY_DATA.flows[state.activeOpportunity.id];
@@ -740,6 +1196,8 @@
     if(sig)merged.__SIGNATURE__=sig;
     var specialtySelect=specialtySelectionEvent();
     if(specialtySelect)merged[state.scene]=specialtySelect;
+    var educationEvent=educationApplicationEvent();
+    if(educationEvent)merged[state.scene]=educationEvent;
     var opp=activeOpportunityEvent();
     if(opp)merged.__OPPORTUNITY_FLOW__=opp;
     return merged;
@@ -764,7 +1222,7 @@
       return true;
     }
 
-    if(current.type==="key"||current.type==="opportunity"||current.type==="specialtySelect")return false;
+    if(current.type==="key"||current.type==="opportunity"||current.type==="specialtySelect"||current.type==="educationApply"||current.type==="educationSchool"||current.type==="educationResult")return false;
 
     if(SPECIALTY_DATA&&state.specialtyId&&current.type!=="specialty"&&/研究生|博士|规培|住院|主治|职业|高级职称|临床专硕|学硕/.test(current.stage||"")){
       var spec=SPECIALTY_DATA.specialties[state.specialtyId];
@@ -809,6 +1267,35 @@
     (choice.flags||[]).forEach(function(f){state.flags.add(f);});
     if(choice.route)state.route=choice.route;
 
+    if(choice.eduStart){
+      state.eduApplication={level:choice.eduStart.level,source:choice.eduStart.source,prep:0};
+    }
+    if(choice.eduMasterType){
+      state.eduApplication=state.eduApplication||{level:"master",source:"exam",prep:0};
+      state.eduApplication.masterType=choice.eduMasterType;
+    }
+    if(choice.eduSchoolId){
+      state.eduApplication=state.eduApplication||{prep:0};
+      state.eduApplication.school=findEduSchool(choice.eduSchoolId);
+    }
+    if(choice.eduSpecialtyId){
+      state.eduApplication=state.eduApplication||{prep:0};
+      state.eduApplication.specialtyId=choice.eduSpecialtyId;
+    }
+    if(choice.eduDirectionId){
+      state.eduApplication=state.eduApplication||{prep:0};
+      state.eduApplication.directionId=choice.eduDirectionId;
+    }
+    if(choice.eduPrepAdd){
+      state.eduApplication=state.eduApplication||{prep:0};
+      state.eduApplication.prep=(state.eduApplication.prep||0)+choice.eduPrepAdd;
+    }
+    if(choice.admissionQuery){
+      addLog("录取查询","开始查询 "+((state.eduApplication&&state.eduApplication.school&&state.eduApplication.school.name)||"目标院校")+" 的录取结果。");
+      startAdmissionQuery();
+      return;
+    }
+
     if(choice.specialtyId&&SPECIALTY_DATA){
       var selectedSpec=SPECIALTY_DATA.specialties[choice.specialtyId];
       if(selectedSpec){
@@ -820,7 +1307,7 @@
         addLog("科室分流","你选择了「"+selectedSpec.name+"」。从现在起，后续事件池会按科室变化。");
         state.scene=selectedSpec.intro;
         saveState();render();
-        window.scrollTo({top:0,behavior:"smooth"});
+        scrollAfterRender();
         return;
       }
     }
@@ -843,7 +1330,7 @@
         };
         state.scene="__OPPORTUNITY_FLOW__";
         saveState();render();
-        window.scrollTo({top:0,behavior:"smooth"});
+        scrollAfterRender();
         return;
       }
     }
@@ -873,7 +1360,7 @@
         }
       }
       saveState();render();
-      window.scrollTo({top:0,behavior:"smooth"});
+      scrollAfterRender();
       return;
     }
 
@@ -898,7 +1385,7 @@
     }
 
     saveState();render();
-    window.scrollTo({top:0,behavior:"smooth"});
+    scrollAfterRender();
   }
 
   function sceneProgress(){
@@ -938,7 +1425,7 @@
       if(card)card.classList.toggle("is-low",state.stats[k]<=25);
     });
 
-    el("metaSchool").textContent=school?school.name:"—";
+    el("metaSchool").textContent=currentInstitutionName();
     el("metaScore").textContent=state.score||"—";
     el("metaDifficulty").textContent=DIFFICULTIES[state.difficulty].name;
     el("metaProfile").textContent=profile.name;
@@ -946,6 +1433,8 @@
     el("metaSpecialty").textContent=currentSpecialtyName();
     el("metaBackground").textContent=backgroundShort(state.background);
     renderJourneyRibbon("gameScreen");
+    renderEducationTimeline();
+    applyStageBackground();
 
     el("stageChip").textContent=e.stage;
     el("yearText").textContent=e.year;
@@ -953,9 +1442,9 @@
     el("sceneText").textContent=e.text;
     el("progressBar").style.width=sceneProgress()+"%";
 
-    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":e.type==="specialtySelect"?"科室分流":e.type==="specialty"?"科室专属":"主线";
+    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":e.type==="specialtySelect"?"科室分流":e.type==="specialty"?"科室专属":e.type==="educationSchool"?"选择院校":e.type==="educationApply"?"升学申请":e.type==="educationResult"?"录取查询":"主线";
     el("typeChip").textContent=typeName;
-    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":e.type==="specialtySelect"?" specialty-select":e.type==="specialty"?" specialty":"");
+    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":e.type==="specialtySelect"?" specialty-select":e.type==="specialty"?" specialty":e.type==="educationSchool"||e.type==="educationApply"?" education":e.type==="educationResult"?" education-result":"");
 
     var panel=document.querySelector(".story-panel");
     panel.classList.toggle("key-scene",!!e.critical);
@@ -981,6 +1470,9 @@
     else if(e.type==="resultSuccess"||e.type==="resultFail")el("effectHint").textContent="结果已经确定，但你对成功或失败的后续处理仍然会改变人生路线。";
     else if(e.type==="specialtySelect")el("effectHint").textContent="择科是长期分流：不同科室拥有不同的夜班强度、操作要求、科研机会和专属剧情。";
     else if(e.type==="specialty")el("effectHint").textContent="这是 "+currentSpecialtyName()+" 的专属事件；换一个科室，后续问题会完全不同。";
+    else if(e.type==="educationSchool")el("effectHint").textContent="院校选择会真实参与本局录取概率，录取成功后写入教育档案。";
+    else if(e.type==="educationApply")el("effectHint").textContent="前面每一步准备都会累积到最终录取概率，不是最后一刻纯随机。";
+    else if(e.type==="educationResult")el("effectHint").textContent="结果已经在点击查询时锁定；倒计时只模拟招生系统查询过程。";
     else if(["side","random"].indexOf(e.type)>=0)el("effectHint").textContent="完成支线后会回到原来的主线，但留下的属性和隐藏经历会继续影响后面。";
     else el("effectHint").textContent="不同学校、早期路线和过去的关键选择，会让后面的可选项逐渐不同。";
 
@@ -989,7 +1481,7 @@
     e.choices.filter(choiceVisible).forEach(function(c){
       var ok=requirementsMet(c.requires);
       var b=document.createElement("button");
-      b.className="choice-btn"+(c.specialtyId?" specialty-choice":"");
+      b.className="choice-btn"+((c.specialtyId||c.eduSpecialtyId)?" specialty-choice":"")+(c.eduSchoolId?" education-school-choice":"");
       b.disabled=!ok;
       var sub=ok?c.sub:"条件不足："+requirementText(c.requires);
       var meta="";
@@ -1071,7 +1563,9 @@
     var school=currentSchool(),wins=successfulApplications();
     var items=[
       ["出生环境",backgroundShort(state.background)],
-      ["起点",school?school.name:"—"],
+      ["本科",state.educationHistory&&state.educationHistory.undergrad?state.educationHistory.undergrad.schoolName:(school?school.name:"—")],
+      ["硕士",state.educationHistory&&state.educationHistory.master?state.educationHistory.master.schoolName+" · "+state.educationHistory.master.type:"—"],
+      ["博士",state.educationHistory&&state.educationHistory.phd?state.educationHistory.phd.schoolName+" · "+state.educationHistory.phd.type:"—"],
       ["学历层级",highestEducationLabel()],
       ["主要路线",state.route||"—"],
       ["科室 / 学科",currentSpecialtyName()],
@@ -1235,7 +1729,7 @@
     renderJourney();
     if(BOARD&&el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
     renderWall();
-    saveState();window.scrollTo({top:0,behavior:"smooth"});
+    saveState();scrollAfterRender();
   }
 
   function serializableState(){
@@ -1257,6 +1751,12 @@
     state.profileId=raw.profileId||profileIdForSchool(schoolById(raw.schoolId));
     state.applications=raw.applications||{};
     state.activeOpportunity=raw.activeOpportunity||null;
+    state.educationHistory=raw.educationHistory||{
+      undergrad:{schoolId:raw.schoolId,schoolName:(schoolById(raw.schoolId)||{}).name||"本科院校",level:(schoolById(raw.schoolId)||{}).educationLevel||"本科",major:(schoolById(raw.schoolId)||{}).program||"临床医学"},
+      master:null,phd:null,overseas:[]
+    };
+    state.eduApplication=raw.eduApplication||null;
+    state.pendingAdmissionResult=null;
     state.specialtyId=raw.specialtyId||null;
     state.specialtyReturnNext=raw.specialtyReturnNext||null;
     state.route=raw.route||"本科·未分流";
@@ -1282,7 +1782,7 @@
     Storage.clear();state=null;pendingName="";pendingBackground=null;selectedDifficulty="normal";
     renderDifficulty();resetGaokao();showOnly("startScreen");
     el("restartBtn").hidden=true;refreshContinue();
-    window.scrollTo({top:0,behavior:"smooth"});
+    scrollAfterRender();
   }
 
   el("schoolSearch").addEventListener("input",function(){
@@ -1309,6 +1809,8 @@
   el("legacyMessage").addEventListener("input",function(){
     el("messageCount").textContent=this.value.length+" / 200";
   });
+  el("admissionResultBtn").addEventListener("click",confirmAdmissionResult);
+
   el("postMessageBtn").addEventListener("click",postLegacyMessage);
   el("viewAllMessagesBtn").addEventListener("click",function(){
     el("allMessagesPanel").hidden=false;
