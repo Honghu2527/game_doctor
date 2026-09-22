@@ -1077,54 +1077,43 @@ body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets
 body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/dermatology.svg")}
 
 
-/* v0.9.2 AI scene art — remove 4x crop/pixelation */
+/* v0.9.4 background hotfix — do not stretch the low-resolution AI collage */
 .stage-backdrop{
-  background-image:url("assets/bg/medical_stage_ai.jpg?v=093") !important;
-  background-size:cover !important;
-  background-repeat:no-repeat !important;
-  background-position:center 18% !important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
   image-rendering:auto;
   filter:saturate(.98) contrast(1.02);
 }
+
+/* Use the stage-specific vector scenes until real high-resolution AI images are uploaded */
+body[data-stage-bg="undergrad"] .stage-backdrop{background-image:url("assets/bg/undergrad_library.svg")!important;background-position:center 25%!important}
+body[data-stage-bg="internal"] .stage-backdrop{background-image:url("assets/bg/master_internal.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="surgery"] .stage-backdrop{background-image:url("assets/bg/master_surgery.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="pediatrics"] .stage-backdrop{background-image:url("assets/bg/pediatrics.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="obgyn"] .stage-backdrop{background-image:url("assets/bg/obgyn.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="emergency"] .stage-backdrop{background-image:url("assets/bg/emergency.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="anesthesia"] .stage-backdrop{background-image:url("assets/bg/anesthesia.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="radiology"] .stage-backdrop{background-image:url("assets/bg/radiology.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="nuclear"] .stage-backdrop{background-image:url("assets/bg/nuclear.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="pathology"] .stage-backdrop{background-image:url("assets/bg/pathology.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="psychiatry"] .stage-backdrop{background-image:url("assets/bg/psychiatry.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="general"] .stage-backdrop{background-image:url("assets/bg/general.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="oncology"] .stage-backdrop{background-image:url("assets/bg/oncology.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets/bg/ophthalmology.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/dermatology.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="research"] .stage-backdrop{background-image:url("assets/bg/research_lab.svg")!important;background-position:center 22%!important}
+body[data-stage-bg="hospital"] .stage-backdrop{background-image:url("assets/bg/career_hospital.svg")!important;background-position:center 22%!important}
+
 .stage-backdrop::before{
   background:
-    linear-gradient(90deg,rgba(15,28,31,.66) 0%,rgba(15,28,31,.43) 38%,rgba(15,28,31,.12) 74%,rgba(15,28,31,.06) 100%),
-    linear-gradient(180deg,rgba(16,29,32,.04) 0%,rgba(16,29,32,.14) 60%,#eee8dd 100%) !important;
+    linear-gradient(90deg,rgba(15,28,31,.62) 0%,rgba(15,28,31,.38) 42%,rgba(15,28,31,.10) 80%,rgba(15,28,31,.04) 100%),
+    linear-gradient(180deg,rgba(16,29,32,.02) 0%,rgba(16,29,32,.12) 60%,#eee8dd 100%)!important;
 }
-
-/* Keep the AI person visible without zooming the source image */
-body[data-stage-bg="undergrad"] .stage-backdrop{background-position:58% 18%!important}
-body[data-stage-bg="internal"] .stage-backdrop{background-position:57% 20%!important}
-body[data-stage-bg="surgery"] .stage-backdrop{background-position:62% 20%!important}
-body[data-stage-bg="pediatrics"] .stage-backdrop{background-position:58% 20%!important}
-body[data-stage-bg="radiology"] .stage-backdrop{background-position:64% 22%!important}
-body[data-stage-bg="nuclear"] .stage-backdrop{background-position:64% 22%!important}
-body[data-stage-bg="pathology"] .stage-backdrop{background-position:60% 20%!important}
-body[data-stage-bg="research"] .stage-backdrop{background-position:55% 20%!important}
-body[data-stage-bg="hospital"] .stage-backdrop{background-position:58% 20%!important}
-body[data-stage-bg="obgyn"] .stage-backdrop{background-position:58% 20%!important}
-body[data-stage-bg="emergency"] .stage-backdrop{background-position:58% 20%!important}
-body[data-stage-bg="anesthesia"] .stage-backdrop{background-position:60% 20%!important}
-body[data-stage-bg="psychiatry"] .stage-backdrop{background-position:55% 20%!important}
-body[data-stage-bg="general"] .stage-backdrop{background-position:55% 20%!important}
-body[data-stage-bg="oncology"] .stage-backdrop{background-position:60% 20%!important}
-body[data-stage-bg="ophthalmology"] .stage-backdrop{background-position:62% 20%!important}
-body[data-stage-bg="dermatology"] .stage-backdrop{background-position:58% 20%!important}
 
 @media(max-width:760px){
-  .stage-backdrop{
-    height:560px;
-    background-size:cover!important;
-    background-position:64% 14%!important;
-  }
-  .stage-backdrop::before{
-    background:
-      linear-gradient(90deg,rgba(15,28,31,.69),rgba(15,28,31,.28)),
-      linear-gradient(180deg,rgba(16,29,32,.02) 0%,rgba(16,29,32,.16) 58%,#eee8dd 100%) !important;
-  }
+  .stage-backdrop{height:560px;background-size:cover!important}
   .topbar{min-height:245px}
 }
-
 /* v0.9.1 ending blessing */
 .ending-blessing-overlay{
   position:fixed;
@@ -1190,4 +1179,4 @@ body[data-stage-bg="dermatology"] .stage-backdrop{background-position:58% 20%!im
   .blessing-actions button{width:100%}
 }
 
-/* build:v0.9.3-force-pages */
+/* build:v0.9.4-background-hotfix */
