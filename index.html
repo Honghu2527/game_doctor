@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4efe5">
   <meta name="description" content="医学生养成记录——中国医学生分支人生模拟器">
   <title>医学生养成记录</title>
-  <link rel="stylesheet" href="styles.css?v=0.5.1">
+  <link rel="stylesheet" href="styles.css?v=0.6.0">
 </head>
 <body>
   <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
@@ -24,23 +24,34 @@
     </header>
 
     <section id="startScreen" class="panel start-panel">
-      <div class="hero-badge">中国医学生人生模拟器 · v0.5.1</div>
+      <div class="hero-badge">中国医学生人生模拟器 · v0.6.0</div>
       <h2>先从高考那一秒开始。</h2>
       <p class="intro">你会亲手“停下”自己的高考分数，再在游戏化报考区间里选择医学院校。学校会影响后续培养压力、科研竞争、生活成本和初始属性。</p>
       <div class="form-row">
         <label for="playerName">角色姓名</label>
         <input id="playerName" maxlength="12" value="小张" autocomplete="off">
       </div>
+      <div class="section-label">出生档案</div>
+      <div class="birth-grid">
+        <label class="birth-field"><span>成长环境</span><select id="birthHometown"></select></label>
+        <label class="birth-field"><span>独生子女</span><select id="birthOnlyChild"></select></label>
+        <label class="birth-field"><span>家庭经济</span><select id="birthEconomy"></select></label>
+        <label class="birth-field"><span>家庭教育资源</span><select id="birthEducation"></select></label>
+        <label class="birth-field"><span>医学家庭背景</span><select id="birthMedical"></select></label>
+      </div>
+      <div id="birthPreview" class="birth-preview"></div>
+      <div class="birth-note">出生条件只影响游戏中的资源、信息差和机会成本，不代表现实中任何群体的能力或价值。</div>
+
       <div class="section-label">人生难度</div>
       <div id="difficultyGrid" class="difficulty-grid"></div>
-      <div class="start-note">学校难度与人生难度会叠加。地狱模式 + 高压院校，会明显提高体力与心理消耗。</div>
-      <button id="startBtn" class="primary-btn">进入高考放榜日</button>
+      <div class="start-note">出生条件、学校生态与人生难度会叠加，但任何开局都保留后续升学和路线转换机会。</div>
+      <button id="startBtn" class="primary-btn">确认出生档案 · 进入高考放榜日</button>
     </section>
 
     <section id="gaokaoScreen" class="panel gaokao-panel" hidden>
       <div class="hero-badge">第一关 · 高考放榜</div>
       <h2>750 分，总有一个数字会停在你面前。</h2>
-      <p class="intro">点击“开始滚动”，分数会快速变化；当你觉得就是现在，点击“停止”。每局只能正式停一次。</p>
+      <p class="intro">点击“开始滚动”，分数会在更广的 280–745 游戏区间内快速变化；当你觉得就是现在，点击“停止”。出生资源只会产生小幅度影响，不会直接决定结果。</p>
       <div class="score-machine">
         <div class="score-label">高考总分</div>
         <div id="scoreDisplay" class="score-display">---</div>
@@ -51,6 +62,7 @@
         <button id="stopBtn" class="danger-btn" disabled>停止！</button>
       </div>
       <div id="scoreResult" class="score-result" hidden></div>
+      <div id="scoreEligibility" class="score-eligibility" hidden></div>
     </section>
 
     <section id="schoolScreen" class="panel school-panel" hidden>
@@ -92,6 +104,7 @@
         </div>
         <div class="fake-seal">录取</div>
       </div>
+      <div id="birthSummaryCard" class="school-effect-summary"></div>
       <div id="schoolEffectSummary" class="school-effect-summary"></div>
       <div class="school-ecosystem-card">
         <div class="eyebrow">SCHOOL ECOSYSTEM</div>
@@ -116,6 +129,7 @@
         <div><span>模式</span><strong id="metaDifficulty">—</strong></div>
         <div><span>培养生态</span><strong id="metaProfile">—</strong></div>
         <div><span>当前路线</span><strong id="metaRoute">本科·未分流</strong></div>
+        <div><span>出生条件</span><strong id="metaBackground">—</strong></div>
       </section>
 
       <section class="status-grid" aria-label="角色属性">
@@ -184,19 +198,20 @@
     </section>
 
     <footer>
-      <span>Prototype · Honghu2527/game_doctor · v0.5.1</span>
+      <span>Prototype · Honghu2527/game_doctor · v0.6.0</span>
       <span>院校与分数为游戏化设定，不构成高考志愿或职业建议。</span>
     </footer>
   </main>
 
-  <script src="data/schools.js?v=0.5.1"></script>
-  <script src="data/events.js?v=0.5.1"></script>
-  <script src="data/school_system.js?v=0.5.1"></script>
-  <script src="data/schools_expansion.js?v=0.5.1"></script>
-  <script src="data/career_tree.js?v=0.5.1"></script>
-  <script src="data/college_route.js?v=0.5.1"></script>
-  <script src="data/opportunity_flows.js?v=0.5.1"></script>
-  <script src="data/college_opportunities.js?v=0.5.1"></script>
-  <script src="app.js?v=0.5.1"></script>
+  <script src="data/backgrounds.js?v=0.6.0"></script>
+  <script src="data/schools.js?v=0.6.0"></script>
+  <script src="data/events.js?v=0.6.0"></script>
+  <script src="data/school_system.js?v=0.6.0"></script>
+  <script src="data/schools_expansion.js?v=0.6.0"></script>
+  <script src="data/career_tree.js?v=0.6.0"></script>
+  <script src="data/college_route.js?v=0.6.0"></script>
+  <script src="data/opportunity_flows.js?v=0.6.0"></script>
+  <script src="data/college_opportunities.js?v=0.6.0"></script>
+  <script src="app.js?v=0.6.0"></script>
 </body>
 </html>
