@@ -432,6 +432,11 @@
     if(/^edu_phd/.test(scene)){
       return {current:"博士申请 · "+((state.eduApplication&&state.eduApplication.school&&state.eduApplication.school.name)||"选择目标院校"),next:"学科 / 研究计划 / 面试 / 查询录取",steps:[["硕士/直博资格","done"],["博士院校","current"],["研究计划","future"],["录取结果","future"]]};
     }
+    if(/^job_/.test(scene)||scene==="job_choice"){
+      var ja=state.jobApplication||{},jc=cityById(ja.cityId),jh=ja.hospital;
+      var currentJob=scene==="job_choice"||scene==="job_city_select"?"选择求职城市":scene==="job_hospital_select"?"选择目标医院":scene==="job_application_prepare"?"简历筛选":scene==="job_interview"?"医院面试":scene==="job_result"?"等待招聘结果":scene==="job_offer"?"收到 Offer":"求职未录用";
+      return {current:"求职竞争 · "+currentJob,next:"医院选择 / 简历 / 面试 / Offer",steps:[["学历与规培","done"],["城市","done"],["医院竞争","current"],["正式入职","future"]]};
+    }
     if(/key_graduation|grad_exam|exam_fail|recommended_postgrad|specialty_select/.test(scene)){
       return {current:"升学与科室分流",next:"专硕并轨 / 学硕科研 / 直博 / 直接规培",steps:[["本科","done"],["毕业","done"],["升学分流","current"],["科室选择","future"]]};
     }
@@ -1683,6 +1688,7 @@
       var flowState=state.activeOpportunity;
       if(choice.endFlow){
         var returnNext=flowState.returnNext;
+        syncPublicationMilestones(state.scene,returnNext);
         addLog("机会流程结束","这次申请经历结束，人生继续向前。");
         state.activeOpportunity=null;
         state.scene=returnNext;
@@ -1735,9 +1741,13 @@
       var sp=ORDER.indexOf(state.specialtyReturnNext);
       return Math.round((Math.max(1,sp)/ORDER.length)*100);
     }
-    if(e&&["side","random","school","specialty"].indexOf(e.type)>=0&&state.pendingNext){
+    if(e&&["side","random","school","specialty","language"].indexOf(e.type)>=0&&state.pendingNext){
       var p=ORDER.indexOf(state.pendingNext);
       return Math.round((Math.max(1,p)/ORDER.length)*100);
+    }
+    if(/^job_/.test(state.scene||"")||state.scene==="job_choice"){
+      var jobAnchor=ORDER.indexOf("job_choice");
+      return Math.round(((Math.max(1,jobAnchor)+1)/ORDER.length)*100);
     }
     var i=ORDER.indexOf(state.scene);
     if(i<0)return 5;
