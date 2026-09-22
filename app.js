@@ -81,7 +81,9 @@
   }
 
   function currentEmployerName(){
-    return state&&state.job?state.job.hospitalName+" · "+state.job.cityName:"尚未就业";
+    if(state&&state.job)return state.job.hospitalName+" · "+state.job.cityName;
+    if(state&&state.researchJob)return state.researchJob.name+" · "+state.researchJob.title;
+    return "尚未就业";
   }
 
   function educationRank(){
@@ -320,6 +322,10 @@
   }
 
   function currentProfessionalTitle(){
+    if(state.flags.has("seniorPI"))return "资深PI / 教授";
+    if(state.flags.has("researchLeader"))return "科研平台主管 / 资深研究员";
+    if(state.flags.has("translationLeader"))return "转化研发负责人";
+    if(state.researchJob&&state.researchJob.title)return state.researchJob.title;
     if(state.flags.has("director"))return "主任医师 / 科主任";
     if(state.flags.has("expert"))return "主任医师 / 临床专家";
     if(state.flags.has("academicianTrack"))return "主任医师 / 学术PI";
@@ -334,6 +340,10 @@
   function terminationStageLabel(type){
     var e=allEvents()[state.scene];
     if(type==="burnout"&&e&&e.stage)return e.stage;
+    if(state.flags.has("researchCareer")||state.researchJob||/^postdoc_|overseas_postdoc|research_/.test(state.scene||"")){
+      var rt=currentProfessionalTitle();
+      return rt||"科研职业阶段";
+    }
     var title=currentProfessionalTitle();
     if(title)return title;
     if(/^phd_|direct_phd|edu_phd/.test(state.scene||"")||state.flags.has("phdDomestic")||state.flags.has("phdOverseas"))return "博士研究生 / 博士阶段";
@@ -345,7 +355,7 @@
   function renderEndingStatus(type){
     var pub=publicationSummary();
     var stage=terminationStageLabel(type);
-    var place=state.job?(state.job.cityName+" · "+state.job.hospitalName):currentInstitutionName();
+    var place=state.job?(state.job.cityName+" · "+state.job.hospitalName):(state.researchJob?(state.researchJob.name+" · "+state.researchJob.title):currentInstitutionName());
     el("endingStatusHeadline").textContent="终止于："+stage;
     el("endingStatusMeta").textContent=place+" · "+currentSpecialtyName()+" · "+highestEducationLabel();
     var parts=["SCI "+pub.total+" 篇","Q1 "+pub.q1+" 篇","累计 IF "+pub.totalIF.toFixed(1)];
@@ -373,11 +383,11 @@
     if(!state)return "undergrad";
     if(state.finished)return "ending";
     var scene=state.scene||"";
-    if(/^overseas_|edu_master_overseas|edu_phd_overseas/.test(scene))return "overseas";
+    if(/^overseas_|edu_master_overseas|edu_phd_overseas|overseas_postdoc/.test(scene))return "overseas";
     var spec=state.specialtyId||"";
     if(/^fresh_|white_coat|key_undergrad|ug_|clinical_exposure|key_graduation/.test(scene))return "undergrad";
     if(/^edu_|grad_exam|exam_fail|recommended/.test(scene))return "undergrad";
-    if(state.flags.has("academicMaster")||/^phd_|direct_phd/.test(scene))return "research";
+    if(/^phd_|direct_phd|postdoc_|research_/.test(scene))return "research";
     var specialtyBg={
       internal:"internal",surgery:"surgery",pediatrics:"pediatrics",obgyn:"obgyn",emergency:"emergency",
       anesthesia:"anesthesia",radiology:"radiology",nuclear:"nuclear",pathology:"pathology",psychiatry:"psychiatry",
@@ -437,6 +447,10 @@
       var ja=state.jobApplication||{},jc=cityById(ja.cityId),jh=ja.hospital;
       var currentJob=scene==="job_choice"||scene==="job_city_select"?"选择求职城市":scene==="job_hospital_select"?"选择目标医院":scene==="job_application_prepare"?"简历筛选":scene==="job_interview"?"医院面试":scene==="job_result"?"等待招聘结果":scene==="job_offer"?"收到 Offer":"求职未录用";
       return {current:"求职竞争 · "+currentJob,next:"医院选择 / 简历 / 面试 / Offer",steps:[["学历与规培","done"],["城市","done"],["医院竞争","current"],["正式入职","future"]]};
+    }
+    if(/^postdoc_|overseas_postdoc|research_/.test(scene)){
+      var rlabel=/overseas_postdoc/.test(scene)?"海外博士后":/research_job_competition/.test(scene)?"科研岗位竞争":/research_early/.test(scene)?"青年科研职业":/research_mid|research_mature/.test(scene)?"科研职业发展":"科研职业";
+      return {current:rlabel,next:"教职 / 研究员 / 科研平台 / 产业研发",steps:[["博士","done"],["博士后","done"],["科研职业","current"],["科研终章","future"]]};
     }
     if(/key_graduation|grad_exam|exam_fail|recommended_postgrad|specialty_select/.test(scene)){
       return {current:"升学与科室分流",next:"专硕并轨 / 学硕科研 / 直博 / 直接规培",steps:[["本科","done"],["毕业","done"],["升学分流","current"],["科室选择","future"]]};
@@ -1678,6 +1692,20 @@
 
     var success=null;
     if(choice.chance)success=resolveChance(choice.chance);
+    if(choice.researchEmployer){
+      state.researchJob=choice.researchEmployer;
+      state.job=null;
+    }
+    if(success===true&&choice.successResearchEmployer){
+      state.researchJob=choice.successResearchEmployer;
+      state.job=null;
+      addLog("科研岗位","进入 "+choice.successResearchEmployer.name+"，身份为 "+choice.successResearchEmployer.title+"。");
+    }
+    if(success===false&&choice.failResearchEmployer){
+      state.researchJob=choice.failResearchEmployer;
+      state.job=null;
+      addLog("科研岗位","本轮未拿到目标岗位，当前身份为 "+choice.failResearchEmployer.title+"。");
+    }
     syncPublicationMilestones(state.scene,null);
 
     var effects=effectText(choice.effects);
@@ -1864,6 +1892,12 @@
     else if(state.flags.has("clinicalMaster")||state.flags.has("academicMaster"))prefix+="你完成了硕士阶段；";
     else if(state.flags.has("noMaster"))prefix+="你选择本科后更早进入临床；";
 
+    if(state.flags.has("researchCareer")||state.researchJob||state.flags.has("seniorPI")||state.flags.has("researchLeader")||state.flags.has("translationLeader")){
+      if(state.flags.has("seniorPI"))return ["资深PI / 教授路线",prefix+"你没有自动回到临床，而是把独立课题、团队和人才培养做成了职业核心。"];
+      if(state.flags.has("researchLeader"))return ["科研平台主管 / 资深研究员路线",prefix+"你的职业影响力主要来自大型科研平台、合作网络与稳定研究产出。"];
+      if(state.flags.has("translationLeader")||state.flags.has("industryLead"))return ["医学科研转化 / 产业研发路线",prefix+"你把医学训练带进研发与转化，而不是进入传统临床职称序列。"];
+      return ["医学科研职业路线",prefix+"你最终留在科研体系，职业评价来自论文、基金、平台和研究独立性，而不是临床职称。"];
+    }
     if(state.flags.has("academicianTrack")&&s.research>=76&&s.reputation>=68)
       return ["学术带头人 / 顶尖学者路线",prefix+"你最终把科研、团队和学术共同体建设成职业核心。"];
     if(state.flags.has("director")&&s.reputation>=68)
@@ -1887,7 +1921,8 @@
       phdDomestic:"国内博士",phdOverseas:"海外博士",noPhd:"未读博",noMaster:"本科后就业",postdoc:"博后",
       masterScholarship:"研究生奖学金",jointTraining:"联合培养",keyProject:"重点项目",phdJoint:"博士联合培养",
       youthGrant:"青年基金",visitingScholar:"海外访问",clinicalFellowship:"临床进修",youngTalent:"青年人才项目",
-      researchTrack:"科研晋升",clinicalTrack:"临床专家",lifeTrack:"长期主义",director:"管理路线",expert:"临床专家",academicianTrack:"学术路线"
+      researchTrack:"科研晋升",clinicalTrack:"临床专家",lifeTrack:"长期主义",director:"管理路线",expert:"临床专家",academicianTrack:"学术路线",
+      researchCareer:"科研职业",postdoc:"博士后",overseasPostdoc:"海外博士后",youngPI:"青年PI",researchScientist:"研究员",hospitalResearch:"医院科研岗",industryResearch:"产业研发",independentPI:"独立PI",seniorScientist:"资深研究员",industryLead:"研发负责人",seniorPI:"资深PI",researchLeader:"科研平台主管",translationLeader:"转化研发"
     };
     return map[flag]||null;
   }
@@ -1921,7 +1956,7 @@
       ["学历层级",highestEducationLabel()],
       ["主要路线",state.route||"—"],
       ["科室 / 学科",currentSpecialtyName()],
-      ["最终单位",state.job?state.job.cityName+" · "+state.job.hospitalName:"—"],
+      ["最终单位",state.job?state.job.cityName+" · "+state.job.hospitalName:(state.researchJob?state.researchJob.name+" · "+state.researchJob.title:"—")],
       ["终止时身份",terminationStageLabel()],
       ["科研成果",(function(){var p=publicationSummary();return "SCI "+p.total+" 篇 · Q1 "+p.q1+" 篇 · 累计IF "+p.totalIF.toFixed(1);})()],
       ["关键机会",wins.length?wins.join("、"):"本轮没有拿到稀缺机会，但人生仍继续"],
@@ -2139,6 +2174,7 @@
     state.publications=raw.publications||[];
     state.publicationMilestones=raw.publicationMilestones||{};
     state.job=raw.job||null;
+    state.researchJob=raw.researchJob||null;
     state.jobApplication=raw.jobApplication||null;
     state.jobFailures=raw.jobFailures||0;
     state.specialtyId=raw.specialtyId||null;
