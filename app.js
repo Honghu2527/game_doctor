@@ -916,12 +916,59 @@
     statKeys.forEach(function(k){state.stats[k]=clamp(Math.round(state.stats[k]),0,100);});
   }
 
+  function stageLoadMultiplier(stat,raw){
+    if(raw>=0)return 1;
+    var e=state&&allEvents()[state.scene]||{};
+    var label=((e.stage||"")+" "+(e.title||"")).toLowerCase();
+    var m=1;
+
+    /* Different life stages should not consume stamina at the same speed. */
+    if(/医学专科|本科|大一|白大褂|见习|实训/.test(label))m=.56;
+    else if(/本科衔接|专升本/.test(label))m=.62;
+    else if(/研究生|硕士|临床专硕|学硕/.test(label))m=.72;
+    else if(/博士后|科研职业|博士/.test(label))m=.78;
+    else if(/规培|住院医师/.test(label))m=1.00;
+    else if(/主治|高级职称|职业成熟|青年医生/.test(label))m=.82;
+
+    if(/夜班|凌晨|急诊|抢救|连续值班/.test(label))m*=1.14;
+    if(/考试|考研|专升本|复试|面试|竞争/.test(label))m*=.88;
+
+    /* Small everyday choices should often cost no visible stamina. */
+    var amount=Math.abs(raw);
+    if(stat==="energy"){
+      if(amount<=2)return 0;
+      if(amount<=4)m*=.55;
+      else if(amount<=7)m*=.76;
+    }else if(stat==="mental"){
+      if(amount<=1)return 0;
+      if(amount<=3)m*=.66;
+      else if(amount<=6)m*=.84;
+    }
+    return m;
+  }
+
+  function scaledEffectDelta(k,v){
+    if(v>=0)return v;
+    var difficulty=DIFFICULTIES[state.difficulty].negativeScale;
+    if(k==="energy"||k==="mental"){
+      var stageMul=stageLoadMultiplier(k,v);
+      if(stageMul===0)return 0;
+      /* School/specialty pressure matters, but is softened so it cannot drain resources instantly. */
+      var schoolMul=1+(schoolPressure()-1)*.32;
+      var specialtyMul=1+(specialtyPressure()-1)*.42;
+      var delta=Math.round(v*difficulty*stageMul*schoolMul*specialtyMul);
+      if(delta===0&&Math.abs(v)>=3)delta=-1;
+      return delta;
+    }
+    /* Other negative resources use difficulty only; school pressure should not inflate every cost. */
+    return Math.round(v*difficulty);
+  }
+
   function applyEffects(effects){
     effects=effects||{};
-    var scale=DIFFICULTIES[state.difficulty].negativeScale*schoolPressure()*specialtyPressure();
     Object.keys(effects).forEach(function(k){
       if(statKeys.indexOf(k)<0)return;
-      var v=effects[k],delta=v<0?v*scale:v;
+      var v=effects[k],delta=scaledEffectDelta(k,v);
       state.stats[k]=(state.stats[k]||0)+delta;
     });
     clampStats();
@@ -1178,9 +1225,10 @@
   function effectText(effects){
     effects=effects||{};
     return Object.keys(effects).filter(function(k){return statKeys.indexOf(k)>=0;}).map(function(k){
-      var v=effects[k];
+      var v=scaledEffectDelta(k,effects[k]);
+      if(v===0)return "";
       return statNames[k]+" "+(v>0?"+":"")+v;
-    }).join(" · ");
+    }).filter(Boolean).join(" · ");
   }
 
   function metricValue(k){
