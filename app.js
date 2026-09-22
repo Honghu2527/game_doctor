@@ -2,6 +2,7 @@
   "use strict";
 
   var DATA=window.GAME_DATA;
+  var BACKGROUND_DATA=window.BACKGROUND_DATA;
   var SCHOOL_DATA=window.SCHOOL_DATA;
   var SCHOOL_SYSTEM=window.SCHOOL_SYSTEM;
   var CAREER_DATA=window.CAREER_DATA;
@@ -12,7 +13,7 @@
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
   var ORDER=CAREER_DATA.order.concat(COLLEGE_DATA?COLLEGE_DATA.order:[]);
-  var SAVE_KEY="doctor-life-sim-v05";
+  var SAVE_KEY="doctor-life-sim-v06";
   var BOARD_KEY="doctor-life-message-wall-v1";
 
   var state=null;
@@ -21,6 +22,7 @@
   var rollingScore=null;
   var scoreLocked=false;
   var pendingName="";
+  var pendingBackground=null;
   var schoolLevelFilter="all";
   var schoolSearchQuery="";
 
@@ -53,6 +55,88 @@
   function currentSchool(){return state?schoolById(state.schoolId):null;}
   function currentProfile(){var s=currentSchool();return s?profileForSchool(s):SCHOOL_SYSTEM.profiles.growth;}
 
+  function fillSelect(id,obj,defaultKey){
+    var select=el(id);
+    select.innerHTML=Object.keys(obj).map(function(k){
+      return "<option value=\""+k+"\">"+escapeHtml(obj[k].name)+"</option>";
+    }).join("");
+    if(defaultKey&&obj[defaultKey])select.value=defaultKey;
+  }
+
+  function initBirthSelectors(){
+    fillSelect("birthHometown",BACKGROUND_DATA.hometowns,"city");
+    fillSelect("birthOnlyChild",BACKGROUND_DATA.onlyChild,"yes");
+    fillSelect("birthEconomy",BACKGROUND_DATA.economy,"ordinary");
+    fillSelect("birthEducation",BACKGROUND_DATA.education,"college");
+    fillSelect("birthMedical",BACKGROUND_DATA.medicalFamily,"none");
+    ["birthHometown","birthOnlyChild","birthEconomy","birthEducation","birthMedical"].forEach(function(id){
+      el(id).addEventListener("change",renderBirthPreview);
+    });
+    renderBirthPreview();
+  }
+
+  function readBirthSelection(){
+    return {
+      hometown:el("birthHometown").value,
+      onlyChild:el("birthOnlyChild").value,
+      economy:el("birthEconomy").value,
+      education:el("birthEducation").value,
+      medicalFamily:el("birthMedical").value
+    };
+  }
+
+  function compileBackground(sel){
+    var parts=[
+      BACKGROUND_DATA.hometowns[sel.hometown],
+      BACKGROUND_DATA.onlyChild[sel.onlyChild],
+      BACKGROUND_DATA.economy[sel.economy],
+      BACKGROUND_DATA.education[sel.education],
+      BACKGROUND_DATA.medicalFamily[sel.medicalFamily]
+    ];
+    var mods={},resources={infoAccess:3,finance:3,familySupport:3,familyPressure:3,medicalInfo:1,cost:3},scoreShift=0;
+    parts.forEach(function(p){
+      Object.keys(p.mods||{}).forEach(function(k){mods[k]=(mods[k]||0)+p.mods[k];});
+      scoreShift+=p.scoreShift||0;
+    });
+    var home=parts[0],only=parts[1],eco=parts[2],edu=parts[3],med=parts[4];
+    resources.infoAccess=clamp((home.resources.info||3)+(edu.resources.infoBonus||0),1,5);
+    resources.finance=clamp(eco.resources.finance||3,1,5);
+    resources.familySupport=clamp(only.resources.familySupport||3,1,5);
+    resources.familyPressure=clamp((only.resources.familyPressure||3)+(edu.resources.familyPressure||0)+(med.resources.familyPressure||0)-2,1,5);
+    resources.medicalInfo=clamp(med.resources.medicalInfo||1,1,5);
+    resources.cost=clamp(home.resources.cost||3,1,5);
+    return {
+      selection:sel,
+      mods:mods,
+      resources:resources,
+      scoreShift:clamp(scoreShift,-14,14),
+      labels:{
+        hometown:home.name,onlyChild:only.name,economy:eco.name,education:edu.name,medicalFamily:med.name
+      }
+    };
+  }
+
+  function resourceWord(v){
+    return v>=5?"很高":v>=4?"较高":v>=3?"中等":v>=2?"较低":"很低";
+  }
+
+  function renderBirthPreview(){
+    var bg=compileBackground(readBirthSelection());
+    el("birthPreview").innerHTML=
+      "<strong>这一开局的资源画像：</strong> "+
+      "信息获取 "+resourceWord(bg.resources.infoAccess)+" · "+
+      "经济缓冲 "+resourceWord(bg.resources.finance)+" · "+
+      "家庭支持 "+resourceWord(bg.resources.familySupport)+" · "+
+      "医学职业信息 "+resourceWord(bg.resources.medicalInfo)+" · "+
+      "家庭期待 "+resourceWord(bg.resources.familyPressure)+
+      "<br><span style=\"color:#8a8178\">这些只改变游戏资源和部分机会成本；高考仍会大范围随机。</span>";
+  }
+
+  function backgroundShort(bg){
+    if(!bg||!bg.labels)return "—";
+    return bg.labels.hometown+" · "+bg.labels.economy;
+  }
+
   function renderDifficulty(){
     var grid=el("difficultyGrid");
     grid.innerHTML="";
@@ -79,31 +163,52 @@
 
   function beginGaokao(){
     pendingName=el("playerName").value.trim()||"无名医学生";
+    pendingBackground=compileBackground(readBirthSelection());
     resetGaokao();showOnly("gaokaoScreen");el("restartBtn").hidden=false;
     window.scrollTo({top:0,behavior:"smooth"});
   }
 
-  function gaussianScore(){
-    var u=0,v=0;
-    while(u===0)u=Math.random();
-    while(v===0)v=Math.random();
-    var z=Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
-    return Math.round(clamp(626+z*52,530,742));
+  function broadScore(){
+    var r=Math.random(),min,max;
+    if(r<.08){min=280;max=379;}
+    else if(r<.18){min=380;max=449;}
+    else if(r<.32){min=450;max=529;}
+    else if(r<.58){min=530;max=599;}
+    else if(r<.83){min=600;max=669;}
+    else if(r<.96){min=670;max=719;}
+    else{min=720;max=745;}
+    var triangular=(Math.random()+Math.random())/2;
+    var base=min+Math.round((max-min)*triangular);
+    var shift=pendingBackground?pendingBackground.scoreShift:0;
+    return Math.round(clamp(base+shift,280,745));
   }
 
   function startRolling(){
     if(scoreLocked||rollTimer)return;
     el("rollBtn").disabled=true;el("stopBtn").disabled=false;
     el("scoreDisplay").classList.add("rolling");
-    rollingScore=gaussianScore();el("scoreDisplay").textContent=rollingScore;
+    rollingScore=broadScore();el("scoreDisplay").textContent=rollingScore;
     rollTimer=setInterval(function(){
-      rollingScore=gaussianScore();
+      rollingScore=broadScore();
       el("scoreDisplay").textContent=rollingScore;
     },72);
   }
 
   function getBand(score){
     return SCHOOL_DATA.bands.find(function(b){return score>=b.min&&score<=b.max;})||SCHOOL_DATA.bands[SCHOOL_DATA.bands.length-1];
+  }
+
+  function allowedEducationLevels(score){
+    if(score>=530)return ["本科"];
+    if(score>=450)return ["本科","专科"];
+    return ["专科"];
+  }
+
+  function educationRuleText(score){
+    var levels=allowedEducationLevels(score);
+    if(levels.length===1&&levels[0]==="本科")return "本局规则：当前分数只开放本科医学路线。专科入口已锁定。";
+    if(levels.length===1&&levels[0]==="专科")return "本局规则：当前分数只开放医学专科路线。可通过专升本等节点继续向上。";
+    return "本局规则：当前分数处于本科冲刺 / 医学专科并存区间，最终可选学校仍由游戏门槛决定。";
   }
 
   function stopRolling(){
@@ -115,11 +220,17 @@
     box.hidden=false;
     box.innerHTML="<strong>"+rollingScore+" 分 · "+escapeHtml(band.label)+"</strong><br>"+escapeHtml(band.note)+
       "<br><button id=\"goSchoolBtn\" class=\"primary-btn next-score-btn\">查看可选择的医学院校</button>";
+    el("scoreEligibility").hidden=false;
+    el("scoreEligibility").innerHTML="<strong>可报层级："+allowedEducationLevels(rollingScore).join(" / ")+"</strong><br>"+educationRuleText(rollingScore);
     el("goSchoolBtn").addEventListener("click",showSchoolSelection);
   }
 
   function eligibleSchools(score){
-    var all=SCHOOL_DATA.schools.filter(function(s){return score>=s.minScore;});
+    var allowed=allowedEducationLevels(score);
+    var all=SCHOOL_DATA.schools.filter(function(s){
+      var level=s.educationLevel||"本科";
+      return score>=s.minScore&&allowed.indexOf(level)>=0;
+    });
     all.sort(function(a,b){
       if((a.educationLevel||"本科")!==(b.educationLevel||"本科")){
         return (a.educationLevel||"本科")==="本科"?-1:1;
@@ -172,15 +283,20 @@
   function showSchoolSelection(){
     if(!scoreLocked)return;
     showOnly("schoolScreen");
-    schoolLevelFilter="all";
+    var allowed=allowedEducationLevels(rollingScore);
+    schoolLevelFilter=allowed.length===1?allowed[0]:"all";
     schoolSearchQuery="";
     el("schoolSearch").value="";
     Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(btn){
-      btn.classList.toggle("active",btn.getAttribute("data-level")==="all");
+      var level=btn.getAttribute("data-level");
+      var valid=level==="all"?allowed.length>1:allowed.indexOf(level)>=0;
+      btn.disabled=!valid;
+      btn.classList.toggle("locked",!valid);
+      btn.classList.toggle("active",valid&&level===schoolLevelFilter);
     });
     el("schoolScore").textContent=rollingScore;
     var band=getBand(rollingScore);
-    el("bandCard").innerHTML="<strong>"+escapeHtml(band.label)+"</strong><span>"+escapeHtml(band.note)+"</span>";
+    el("bandCard").innerHTML="<strong>"+escapeHtml(band.label)+" · 可报："+allowedEducationLevels(rollingScore).join(" / ")+"</strong><span>"+escapeHtml(band.note)+" "+escapeHtml(educationRuleText(rollingScore))+"</span>";
     renderSchoolGrid();
     window.scrollTo({top:0,behavior:"smooth"});
   }
@@ -231,13 +347,18 @@
     var school=schoolById(id);
     if(!school)return;
     var d=DIFFICULTIES[selectedDifficulty],profile=profileForSchool(school);
+    var allowed=allowedEducationLevels(rollingScore);
+    if(allowed.indexOf(school.educationLevel||"本科")<0)return;
     var stats=Object.assign({},d.start);
+    var bg=pendingBackground||compileBackground(readBirthSelection());
+    directApply(stats,bg.mods);
     directApply(stats,school.mods);
     var profileId=profileIdForSchool(school);
 
     state={
-      version:4,
+      version:6,
       name:pendingName,
+      background:bg,
       difficulty:selectedDifficulty,
       score:rollingScore,
       schoolId:id,
@@ -249,13 +370,17 @@
       pendingNext:(school.educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[profileId]||"fresh_growth"),
       visitedSide:new Set(),
       applications:{},
-      route:"本科·未分流",
+      route:(school.educationLevel==="专科"?"专科·未分流":"本科·未分流"),
       signaturePending:false,
       log:[],
       finished:false
     };
 
     state.flags.add("schoolLevel"+school.level);
+    state.flags.add("birthHometown_"+bg.selection.hometown);
+    state.flags.add("birthEconomy_"+bg.selection.economy);
+    state.flags.add("birthMedical_"+bg.selection.medicalFamily);
+    state.flags.add("birthOnlyChild_"+bg.selection.onlyChild);
     state.flags.add("profile_"+profileId);
     if(state.score>=710)state.flags.add("gaokaoTop");
     if(state.score<575)state.flags.add("underdogStart");
@@ -271,6 +396,11 @@
     el("letterProgram").textContent="专业："+(school.program||"临床医学");
     el("letterLevel").textContent="层次："+(school.educationLevel||"本科");
     el("letterDuration").textContent="学制："+(school.duration||"游戏模拟");
+    el("birthSummaryCard").innerHTML=
+      "<strong>出生档案：</strong><br>"+
+      escapeHtml(bg.labels.hometown)+" · "+escapeHtml(bg.labels.onlyChild)+" · "+escapeHtml(bg.labels.economy)+" · "+
+      escapeHtml(bg.labels.education)+" · "+escapeHtml(bg.labels.medicalFamily)+
+      "<br>资源：信息 "+resourceWord(bg.resources.infoAccess)+" · 经济 "+resourceWord(bg.resources.finance)+" · 家庭支持 "+resourceWord(bg.resources.familySupport)+" · 医学信息 "+resourceWord(bg.resources.medicalInfo);
     el("schoolEffectSummary").innerHTML=
       "<strong>学校会改变实际事件树：</strong><br>"+
       "综合压力 ×"+(school.pressure*profile.negativeScale).toFixed(2)+
@@ -339,6 +469,14 @@
     if(k==="schoolOpportunity")return (p.opportunity||1)*18;
     if(k==="clinicalAccess")return (p.clinicalAccess||1)*18;
     if(k==="schoolCompetition")return (p.competition||1)*18;
+    if(state.background&&state.background.resources){
+      var br=state.background.resources;
+      if(k==="finance")return (br.finance||3)*18;
+      if(k==="infoAccess")return (br.infoAccess||3)*18;
+      if(k==="familySupport")return (br.familySupport||3)*18;
+      if(k==="medicalInfo")return (br.medicalInfo||1)*18;
+      if(k==="familyPressure")return (br.familyPressure||3)*18;
+    }
     return 50;
   }
 
@@ -640,6 +778,7 @@
     el("metaDifficulty").textContent=DIFFICULTIES[state.difficulty].name;
     el("metaProfile").textContent=profile.name;
     el("metaRoute").textContent=state.route||"本科·未分流";
+    el("metaBackground").textContent=backgroundShort(state.background);
 
     el("stageChip").textContent=e.stage;
     el("yearText").textContent=e.year;
@@ -854,6 +993,7 @@
     state.applications=raw.applications||{};
     state.activeOpportunity=raw.activeOpportunity||null;
     state.route=raw.route||"本科·未分流";
+    state.background=raw.background||null;
     state.signaturePending=!!raw.signaturePending;
     if(!raw.talents)state.talents=generateTalents(raw.score||620,schoolById(raw.schoolId),currentProfile());
     selectedDifficulty=state.difficulty||"normal";
@@ -872,7 +1012,7 @@
 
   function reset(){
     if(rollTimer){clearInterval(rollTimer);rollTimer=null;}
-    Storage.clear();state=null;pendingName="";selectedDifficulty="normal";
+    Storage.clear();state=null;pendingName="";pendingBackground=null;selectedDifficulty="normal";
     renderDifficulty();resetGaokao();showOnly("startScreen");
     el("restartBtn").hidden=true;refreshContinue();
     window.scrollTo({top:0,behavior:"smooth"});
@@ -910,5 +1050,5 @@
     el("toggleLogBtn").textContent=hidden?"收起":"展开";
   });
 
-  renderDifficulty();resetGaokao();refreshContinue();
+  initBirthSelectors();renderDifficulty();resetGaokao();refreshContinue();
 })();
