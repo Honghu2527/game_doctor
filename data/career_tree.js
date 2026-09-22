@@ -12,7 +12,8 @@ window.CAREER_DATA = {
     "fresh_elite_research","fresh_elite_clinical","fresh_innovation","fresh_strong_medical","fresh_regional","fresh_growth",
     "white_coat_oath","key_undergrad_identity","ug_research_route","ug_clinical_route","ug_balanced_route","ug_global_route",
     "ug_opportunity_fair","clinical_exposure","key_graduation","grad_exam_route","exam_fail_choice","recommended_postgrad",
-    "clinical_master","academic_master","direct_phd","overseas_postgrad","master_opportunity_round","phd_decision",
+    "specialty_select_clinical_master","specialty_select_academic_master","specialty_select_direct_phd","specialty_select_resident",
+    "clinical_master","clinical_master_finish","academic_master","direct_phd","overseas_postgrad","master_opportunity_round","phd_decision",
     "phd_year1","phd_crisis","phd_global_round","phd_graduation","resident_entry","resident_night","resident_exam",
     "job_choice","young_attending","career_opportunity_round","key_midcareer","promotion","director","final"
   ],
@@ -168,7 +169,7 @@ window.CAREER_DATA = {
       choices:[
         {text:"申请保研 / 推免",sub:"适合成绩和综合表现较强的人；成功后可选临床专硕、学硕或部分直博路线。",effects:{energy:-3},requires:{stats:{knowledge:62}},chance:{p:.52,bonusBy:["knowledge","research","reputation"],success:{mental:7,reputation:5},fail:{mental:-5},successFlags:["recommended"],failFlags:["recommendFailed"]},successNext:"recommended_postgrad",failNext:"grad_exam_route",route:"升学·推免申请"},
         {text:"参加全国硕士研究生考试",sub:"可以通过一次考试重新选择平台和城市。",effects:{knowledge:5,energy:-7,mental:-5},flags:["gradExam"],route:"升学·考研",next:"grad_exam_route"},
-        {text:"直接就业 / 进入规培",sub:"更早进入临床和收入线，但学术晋升空间会受到不同程度影响。",effects:{money:5,reputation:2},flags:["noMaster","directResident"],route:"临床·直接就业规培",next:"resident_entry"},
+        {text:"直接就业 / 进入规培",sub:"不读研，先选规培方向，再进入住院医师规范化培训。",effects:{money:5,reputation:2},flags:["noMaster","directResident"],route:"临床·本科后直接规培",next:"specialty_select_resident"},
         {text:"申请海外研究型项目",sub:"高英语/科研更有优势；费用和不确定性更高。",effects:{money:-5,energy:-4},requires:{talents:{english:58}},chance:{p:.36,bonusBy:["english","researchSense","research"],success:{reputation:7,research:7,mental:6},fail:{money:-3,mental:-5},successFlags:["overseasOffer"],failFlags:["overseasRejected"]},successNext:"overseas_postgrad",failNext:"grad_exam_route",route:"升学·海外申请"}
       ]
     },
@@ -178,9 +179,9 @@ window.CAREER_DATA = {
       warning:"临床专硕、学硕、直博会改变是否同步规培、科研强度、毕业时间和之后是否容易继续读博。",
       text:"“读研”并不是一条路。不同培养类型会把未来三到五年的生活切成完全不同的形状。",
       choices:[
-        {text:"临床医学专业型硕士",sub:"临床与规培任务更重，科研时间更碎。",effects:{knowledge:6,reputation:3,energy:-4},flags:["clinicalMaster"],route:"研究生·临床专硕",next:"clinical_master"},
-        {text:"学术型硕士",sub:"科研训练更系统，之后读博路线更顺。",effects:{research:8,mental:-2},flags:["academicMaster"],route:"研究生·学硕",next:"academic_master"},
-        {text:"尝试直博 / 长学制科研路线",sub:"只有科研基础较强时值得押；周期长、回头成本高。",effects:{research:6,energy:-3},requires:{stats:{research:35}},chance:{p:.45,bonusBy:["research","researchSense","reputation"],success:{research:6,reputation:6,mental:5},fail:{mental:-4},successFlags:["directPhdOffer"],failFlags:["directPhdMiss"]},successNext:"direct_phd",failNext:"academic_master",route:"博士·直博申请"}
+        {text:"临床医学专业型硕士",sub:"先选择专科方向；游戏中按专硕与规培并轨推进，临床任务重、科研时间更碎。",effects:{knowledge:6,reputation:3,energy:-4},flags:["clinicalMaster","integratedResidency"],route:"研究生·临床专硕（并轨规培）",next:"specialty_select_clinical_master"},
+        {text:"学术型硕士",sub:"先选择研究学科；以科研训练为主，不自动完成规培。",effects:{research:8,mental:-2},flags:["academicMaster"],route:"研究生·学硕（科研训练）",next:"specialty_select_academic_master"},
+        {text:"尝试直博 / 长学制科研路线",sub:"科研基础较强时可冲；直博先选学科方向，但不等于已经完成规培。",effects:{research:6,energy:-3},requires:{stats:{research:35}},chance:{p:.45,bonusBy:["research","researchSense","reputation"],success:{research:6,reputation:6,mental:5},fail:{mental:-4},successFlags:["directPhdOffer"],failFlags:["directPhdMiss"]},successNext:"specialty_select_direct_phd",failNext:"specialty_select_academic_master",route:"博士·直博申请"}
       ]
     },
 
@@ -199,18 +200,26 @@ window.CAREER_DATA = {
       warning:"二战会损失一年时间和心理资源；直接就业会关闭当前全日制硕士路线，但你会更早进入临床。",
       text:"成绩出来了。人生没有按照计划推进，但你仍然有选择。",
       choices:[
-        {text:"二战，再来一次",sub:"再付出一年，下一次成功率略提高。",effects:{mental:-7,money:-4,knowledge:5},chance:{p:.62,bonusBy:["knowledge","resilience"],success:{mental:8,reputation:4},fail:{mental:-10},successFlags:["secondTrySuccess"],failFlags:["secondTryFail"]},successNext:"recommended_postgrad",failNext:"resident_entry",route:"升学·二战"},
-        {text:"接受现实，直接进入规培/就业",sub:"不再把时间押在考试上。",effects:{money:4,mental:3},flags:["noMaster","directResident"],route:"临床·考研后就业",next:"resident_entry"}
+        {text:"二战，再来一次",sub:"再付出一年，下一次成功率略提高；再次失败后仍可直接规培。",effects:{mental:-7,money:-4,knowledge:5},chance:{p:.62,bonusBy:["knowledge","resilience"],success:{mental:8,reputation:4},fail:{mental:-10},successFlags:["secondTrySuccess"],failFlags:["secondTryFail"]},successNext:"recommended_postgrad",failNext:"specialty_select_resident",route:"升学·二战"},
+        {text:"接受现实，直接进入规培/就业",sub:"先选规培科室，不再把下一年押在考研上。",effects:{money:4,mental:3},flags:["noMaster","directResident"],route:"临床·考研后直接规培",next:"specialty_select_resident"}
       ]
     },
 
     clinical_master:{
-      stage:"研究生 · 临床专硕",year:"24-26岁",title:"白天轮转，晚上论文，周末还要准备考核",type:"main",
-      text:"临床专硕让你更早进入医院节奏。你获得真实病例，也失去完整的大块科研时间。",
+      stage:"研究生 · 临床专硕 / 并轨规培",year:"24-26岁",title:"白天轮转，晚上论文，周末还要准备考核",type:"main",
+      text:"这条路线把专业学位研究生培养和住院医师规范化培训压在同一阶段。你一边完成科室轮转与临床训练，一边还要满足研究生毕业要求。",
       choices:[
         {text:"临床优先，论文够毕业即可",sub:"基本功更强，学术积累较慢。",effects:{knowledge:9,reputation:5,energy:-7,research:2},flags:["clinicalMasterClinical"],next:"master_opportunity_round"},
         {text:"硬挤时间做科研",sub:"临床和科研两头都压。",effects:{knowledge:5,research:9,energy:-11,mental:-6},flags:["clinicalMasterResearch"],next:"master_opportunity_round"},
         {text:"寻找临床数据型课题",sub:"尽量把临床和科研合在一起。",effects:{knowledge:6,research:7,energy:-7},flags:["clinicalDataResearch"],next:"master_opportunity_round"}
+      ]
+    },
+
+    clinical_master_finish:{
+      stage:"临床专硕毕业 · 并轨规培结业",year:"26-27岁",title:"硕士毕业和规培结业几乎同时来到",type:"main",
+      text:"你没有再从头进入一遍规培。接下来真正的问题是：拿着专硕学历和已经完成的并轨临床训练，去哪里开始第一份正式工作？",
+      choices:[
+        {text:"进入正式求职阶段",sub:"开始比较医院平台、专科机会和生活城市。",effects:{knowledge:3,reputation:4,mental:3},flags:["integratedResidencyFinished"],next:"job_choice"}
       ]
     },
 
@@ -262,7 +271,9 @@ window.CAREER_DATA = {
       choices:[
         {text:"国内读博",sub:"继续科研训练，未来学术和高平台岗位更有空间。",effects:{research:7,energy:-4,mental:-3},requires:{stats:{research:30}},flags:["phdDomestic"],route:"博士·国内",next:"phd_year1"},
         {text:"申请海外博士",sub:"英语、科研和推荐要求更高；成功率不确定。",effects:{money:-5,energy:-4},requires:{talents:{english:60}},chance:{p:.38,bonusBy:["english","researchSense","research","reputation"],success:{reputation:8,research:6,mental:6},fail:{mental:-5,money:-2},successFlags:["phdOverseas"],failFlags:["phdOverseasFail"]},successNext:"phd_year1",failNext:"resident_entry",route:"博士·海外申请"},
-        {text:"不读博，进入临床 / 就业",sub:"更早开始收入、规培和职称时间线。",effects:{money:5,mental:5},flags:["noPhd"],route:"临床·硕士后就业",next:"resident_entry"}
+        {text:"不读博：临床专硕毕业直接求职",sub:"你已经在专硕阶段完成并轨规培，不再重复从规培第一年开始。",effects:{money:5,mental:5},showIfFlags:["clinicalMaster"],flags:["noPhd"],route:"临床·专硕毕业就业",next:"clinical_master_finish"},
+        {text:"不读博：学硕毕业后回临床规培",sub:"学硕阶段没有自动完成规培；如果要继续临床，需要进入规范化培训。",effects:{money:3,mental:4},showIfFlags:["academicMaster"],flags:["noPhd"],route:"临床·学硕后规培",next:"resident_entry"},
+        {text:"不读博：海外项目结束后回国衔接临床",sub:"需要重新衔接本地临床培训与岗位路径。",effects:{money:3,mental:4},showIfFlags:["overseasOffer"],flags:["noPhd"],route:"临床·海外项目后衔接",next:"specialty_select_resident"}
       ]
     },
 
