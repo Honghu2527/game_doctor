@@ -547,3 +547,222 @@ body::before{
 @media(prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+
+/* =========================================================
+   v0.8 — high-contrast archive UI + dynamic journey ribbon
+   ========================================================= */
+.dynamic-ribbon{
+  display:grid;
+  grid-template-columns:minmax(180px,280px) 1fr;
+  gap:18px;
+  align-items:center;
+  padding:14px 16px;
+  background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.16);
+}
+.journey-status{display:grid;gap:2px;min-width:0}
+.journey-kicker{
+  font-size:9px!important;
+  letter-spacing:.16em;
+  color:#e0c78f!important;
+  font-weight:900;
+}
+.journey-status strong{
+  color:#fffdf6;
+  font-size:17px;
+  line-height:1.25;
+}
+.journey-status small{
+  color:#c9d8d6;
+  font-size:10px;
+  line-height:1.45;
+}
+.journey-steps{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.journey-steps::-webkit-scrollbar{display:none}
+.journey-step{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:8px 10px;
+  border-radius:12px;
+  white-space:nowrap;
+  color:#97aaa8;
+  background:rgba(255,255,255,.035);
+  border:1px solid rgba(255,255,255,.06);
+  min-width:max-content;
+}
+.journey-step b{
+  width:23px;height:23px;border-radius:999px;display:grid;place-items:center;
+  font-size:8px;background:rgba(255,255,255,.07);color:#b5c2c0;
+}
+.journey-step span{font-size:10px;font-weight:800}
+.journey-step.done{color:#b9cbc8}
+.journey-step.done b{background:#315c58;color:#e8f3ef}
+.journey-step.current{
+  color:#fffaf0;
+  background:linear-gradient(135deg,rgba(181,139,69,.22),rgba(255,255,255,.08));
+  border-color:rgba(225,195,136,.35);
+  box-shadow:0 5px 18px rgba(0,0,0,.09)
+}
+.journey-step.current b{background:#d5b36e;color:#203133}
+.journey-step.future{opacity:.58}
+
+/* Fix low-contrast metadata area from v0.7 */
+.career-strip{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:14px;
+  padding:12px;
+  background:#f7f3ea !important;
+  border:1px solid #d7cfc2 !important;
+  border-radius:20px;
+  box-shadow:0 12px 34px rgba(30,46,49,.07) !important;
+}
+.career-strip>div{
+  min-width:0;
+  padding:12px 13px !important;
+  border:1px solid #e3dbce !important;
+  border-radius:14px;
+  background:#fffdf8 !important;
+}
+.career-strip>div:first-child{grid-column:span 2}
+.career-strip span{
+  display:block;
+  margin-bottom:5px;
+  color:#748082 !important;
+  font-size:9px !important;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.career-strip strong{
+  display:block;
+  color:#22363a !important;
+  font-size:13px;
+  line-height:1.35;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* Keep the hero strong, but make content area brighter and cleaner */
+#gameScreen{position:relative}
+#gameScreen::before{
+  content:"";
+  position:absolute;
+  left:-10px;right:-10px;top:-8px;height:125px;
+  border-radius:28px;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),transparent);
+  pointer-events:none;
+}
+.status-grid,.story-panel,.log-panel{position:relative;z-index:1}
+.status-card{
+  background:#fffdf9 !important;
+  border:1px solid #ddd5c9 !important;
+  box-shadow:0 8px 22px rgba(32,49,52,.055) !important;
+}
+.status-card span{color:#687779 !important}
+.status-card strong{color:#17282d !important}
+.status-card.is-low{
+  background:#fff8f6 !important;
+  border-color:#e5a6a2 !important;
+}
+.stat-icon{background:#edf3f0 !important}
+.story-panel{
+  border-color:#d8d0c4 !important;
+  box-shadow:0 18px 48px rgba(31,48,50,.08) !important;
+}
+.story-panel h2{color:#1b3034}
+.scene-text{color:#48595b}
+.effect-hint{color:#6e7d7e}
+
+/* Specialty choices */
+.type-chip.specialty-select{
+  background:#e7edf8;
+  color:#445e8c;
+  border-color:#cbd6ea;
+}
+.type-chip.specialty{
+  background:#e8f2ee;
+  color:#246357;
+  border-color:#c9ded7;
+}
+.specialty-choice{
+  display:grid;
+  gap:6px;
+  padding:15px 16px !important;
+}
+.specialty-choice b{font-size:15px}
+.specialty-choice small{font-size:11px;line-height:1.55}
+.specialty-metrics{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:7px;
+}
+.specialty-metrics em{
+  font-style:normal;
+  font-size:9px;
+  color:#526b69;
+  background:#edf4f1;
+  border:1px solid #d9e7e2;
+  border-radius:999px;
+  padding:4px 7px;
+}
+.story-panel.key-scene .specialty-choice{
+  background:linear-gradient(145deg,#fff,#f8faf8);
+}
+
+/* Softer page transitions / clearer sections */
+.panel-title-row h2,.panel-title-row h3{color:#1d3236}
+.school-panel,.letter-panel,.gaokao-panel{box-shadow:var(--shadow)}
+.band-card{background:#f3f7f4;border-color:#ceddd8}
+.school-disclaimer{color:#756f67}
+.log-panel{border-color:#dad2c7}
+.life-log{background:transparent}
+
+@media(max-width:760px){
+  .app-shell{width:min(100% - 20px,1080px);padding-top:18px}
+  .topbar{gap:12px}
+  .topbar h1{font-size:34px;line-height:1.08}
+  .topbar .subtitle{line-height:1.6}
+  .dynamic-ribbon{
+    grid-template-columns:1fr;
+    gap:10px;
+    padding:12px;
+  }
+  .journey-status{
+    grid-template-columns:auto 1fr;
+    align-items:end;
+    column-gap:10px;
+  }
+  .journey-kicker{grid-column:1/-1}
+  .journey-status strong{font-size:15px}
+  .journey-status small{text-align:right;font-size:9px}
+  .journey-steps{justify-content:flex-start}
+  .journey-step{padding:7px 8px}
+  .journey-step span{font-size:9px}
+  .career-strip{
+    grid-template-columns:1fr 1fr !important;
+    gap:8px;
+    padding:9px;
+    background:#f6f2e9 !important;
+  }
+  .career-strip>div:first-child{grid-column:1/-1}
+  .career-strip>div{padding:10px 11px !important}
+  .career-strip span{font-size:8px !important}
+  .career-strip strong{font-size:12px}
+  .status-grid{gap:9px}
+  .status-card{min-height:92px}
+  .story-panel{padding:19px 16px}
+  .specialty-metrics{gap:4px}
+  .specialty-metrics em{font-size:8px;padding:3px 6px}
+}
