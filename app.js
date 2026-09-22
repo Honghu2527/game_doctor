@@ -95,7 +95,9 @@
 
   function stageBackgroundKey(){
     if(!state)return "undergrad";
+    if(state.finished)return "ending";
     var scene=state.scene||"";
+    if(/^overseas_|edu_master_overseas|edu_phd_overseas/.test(scene))return "overseas";
     var spec=state.specialtyId||"";
     if(/^fresh_|white_coat|key_undergrad|ug_|clinical_exposure|key_graduation/.test(scene))return "undergrad";
     if(/^edu_|grad_exam|exam_fail|recommended/.test(scene))return "undergrad";
