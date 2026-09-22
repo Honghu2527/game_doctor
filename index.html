@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4efe5">
+  <meta name="description" content="医学生养成记录——中国医学生分支人生模拟器">
+  <title>医学生养成记录</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">MED STUDENT LIFE SIMULATOR</div>
+        <h1>医学生养成记录</h1>
+        <p class="subtitle">从录取通知书到白大褂，从规培夜班到主任、专家与院士。每个选择都会留下痕迹。</p>
+      </div>
+      <button id="restartBtn" class="ghost-btn" hidden>重新开始</button>
+    </header>
+
+    <section id="startScreen" class="panel start-panel">
+      <div class="hero-badge">中国医学生人生模拟器 · MVP 0.1</div>
+      <h2>欢迎来到医学这条超长赛道。</h2>
+      <p class="intro">你将面对考试、科研、规培、收入、职称、医患沟通、家庭和一点点运气。这里没有绝对正确的答案，只有不同的代价。</p>
+
+      <div class="form-row">
+        <label for="playerName">角色姓名</label>
+        <input id="playerName" maxlength="12" value="小张" autocomplete="off">
+      </div>
+
+      <div class="section-label">选择游戏难度</div>
+      <div id="difficultyGrid" class="difficulty-grid"></div>
+
+      <div class="start-note">提示：地狱模式会放大负面消耗。体力或心理归零时，会提前触发离开临床结局。</div>
+      <button id="startBtn" class="primary-btn">领取录取通知书</button>
+    </section>
+
+    <section id="gameScreen" hidden>
+      <section class="status-grid" aria-label="角色属性">
+        <div class="status-card"><span>知识</span><strong id="statKnowledge">0</strong></div>
+        <div class="status-card"><span>体力</span><strong id="statEnergy">0</strong></div>
+        <div class="status-card"><span>心理</span><strong id="statMental">0</strong></div>
+        <div class="status-card"><span>金钱</span><strong id="statMoney">0</strong></div>
+        <div class="status-card"><span>科研</span><strong id="statResearch">0</strong></div>
+        <div class="status-card"><span>声望</span><strong id="statReputation">0</strong></div>
+      </section>
+
+      <section class="panel story-panel">
+        <div class="timeline-row">
+          <span id="stageChip" class="stage-chip"></span>
+          <span id="yearText" class="year-text"></span>
+        </div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <h2 id="sceneTitle"></h2>
+        <p id="sceneText" class="scene-text"></p>
+        <div id="effectHint" class="effect-hint"></div>
+        <div id="choices" class="choices"></div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-title-row">
+          <div>
+            <div class="eyebrow">YOUR MEDICAL LIFE</div>
+            <h3>人生记录</h3>
+          </div>
+          <button id="toggleLogBtn" class="mini-btn">收起</button>
+        </div>
+        <div id="lifeLog" class="life-log"></div>
+      </section>
+    </section>
+
+    <section id="endingScreen" class="panel ending-panel" hidden>
+      <div class="hero-badge">人生结局</div>
+      <h2 id="endingTitle"></h2>
+      <p id="endingText"></p>
+      <div id="endingStats" class="ending-stats"></div>
+      <div id="endingTags" class="ending-tags"></div>
+      <button id="endingRestartBtn" class="primary-btn">重新投胎学医</button>
+    </section>
+
+    <footer>
+      <span>Prototype · Honghu2527/game_doctor</span>
+      <span>游戏内容为虚构化职业体验，不构成医学或就业建议。</span>
+    </footer>
+  </main>
+
+  <script src="data/events.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
