@@ -1075,3 +1075,28 @@ body[data-stage-bg="general"] .stage-backdrop{background-image:url("assets/bg/ge
 body[data-stage-bg="oncology"] .stage-backdrop{background-image:url("assets/bg/oncology.svg")}
 body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets/bg/ophthalmology.svg")}
 body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/dermatology.svg")}
+
+
+/* v0.9.1 AI scene art — CSS crops from one generated medical-life artwork */
+.stage-backdrop{
+  background-image:url("assets/bg/medical_stage_ai.webp") !important;
+  background-size:400% 400% !important;
+  background-repeat:no-repeat !important;
+}
+body[data-stage-bg="undergrad"] .stage-backdrop{background-position:100% 0!important}
+body[data-stage-bg="internal"] .stage-backdrop{background-position:66.666% 33.333%!important}
+body[data-stage-bg="surgery"] .stage-backdrop{background-position:100% 33.333%!important}
+body[data-stage-bg="pediatrics"] .stage-backdrop{background-position:0 66.666%!important}
+body[data-stage-bg="radiology"] .stage-backdrop{background-position:33.333% 66.666%!important}
+body[data-stage-bg="nuclear"] .stage-backdrop{background-position:66.666% 66.666%!important}
+body[data-stage-bg="pathology"] .stage-backdrop{background-position:100% 66.666%!important}
+body[data-stage-bg="research"] .stage-backdrop{background-position:0 100%!important}
+body[data-stage-bg="hospital"] .stage-backdrop{background-position:66.666% 100%!important}
+body[data-stage-bg="obgyn"] .stage-backdrop,
+body[data-stage-bg="emergency"] .stage-backdrop,
+body[data-stage-bg="anesthesia"] .stage-backdrop,
+body[data-stage-bg="psychiatry"] .stage-backdrop,
+body[data-stage-bg="general"] .stage-backdrop,
+body[data-stage-bg="oncology"] .stage-backdrop,
+body[data-stage-bg="ophthalmology"] .stage-backdrop,
+body[data-stage-bg="dermatology"] .stage-backdrop{background-position:66.666% 100%!important}
