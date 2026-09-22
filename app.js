@@ -212,12 +212,12 @@
       talents:generateTalents(rollingScore,school,profile),
       stats:stats,
       flags:new Set(),
-      scene:CAREER_DATA.entryByProfile[profileId]||"fresh_growth",
-      pendingNext:null,
+      scene:"__SIGNATURE__",
+      pendingNext:CAREER_DATA.entryByProfile[profileId]||"fresh_growth",
       visitedSide:new Set(),
       applications:{},
       route:"本科·未分流",
-      signaturePending:true,
+      signaturePending:false,
       log:[],
       finished:false
     };
