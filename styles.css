@@ -1077,7 +1077,7 @@ body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets
 body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/dermatology.svg")}
 
 
-/* v0.9.5 real AI medical backgrounds stored in GitHub */
+/* v0.9.5 real AI medical backgrounds bundled locally */
 .stage-backdrop{
   background-size:cover!important;
   background-repeat:no-repeat!important;
