@@ -14,11 +14,33 @@
 - 人生记录日志
 - 手机 / 桌面响应式
 - 零依赖 Vanilla HTML / CSS / JavaScript
-- 可部署到 GitHub Pages
+- 可直接通过 GitHub Pages 从 `main` 分支根目录发布
 
 ## 当前剧情范围
 
 临床医学入学 → 白大褂宣誓 → 解剖考试 → 实验室选择 → 临床见习 → 毕业分流 → 硕士/规培 → 第一篇论文 → 夜班 → 医患冲突 → 主治阶段 → 副高评审 → 主任/专家/科研路线 → 人生结局
+
+## 在线发布（GitHub Pages）
+
+本项目是纯静态站点，不需要自定义构建流程。
+
+在 GitHub 仓库中打开：
+
+`Settings → Pages → Build and deployment`
+
+选择：
+
+- Source: `Deploy from a branch`
+- Branch: `main`
+- Folder: `/(root)`
+
+点击 `Save`。
+
+发布地址：
+
+`https://honghu2527.github.io/game_doctor/`
+
+以后只要 `main` 分支更新，GitHub Pages 会自动重新发布。
 
 ## 本地运行
 
