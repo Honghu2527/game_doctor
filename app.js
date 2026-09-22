@@ -2124,7 +2124,7 @@
     if(method==="ad"&&rs.adUsed)return false;
 
     if(method==="share")state.shareReviveUsed=true;
-    if(method==="ad")state.adReviveUsed=true;
+    if(method==="ad"||method==="free")state.adReviveUsed=true;
     state.reviveCount=1;
 
     var stat=currentCrisisStat;
@@ -2134,9 +2134,10 @@
     state.crisisWarned=state.crisisWarned||{energy:false,mental:false};
     state.crisisWarned.energy=false;
     state.crisisWarned.mental=false;
-    state.shareNudgeVisible=method==="ad";
+    state.shareNudgeVisible=method==="ad"||method==="free";
 
-    addLog("人生复活",(method==="share"?"完成分享后复活":"完整观看激励视频后复活")+"。本局唯一一次复活机会已经使用。");
+    var reviveLabel=method==="share"?"完成分享后复活":(method==="free"?"首发版本免费复活":"完整观看激励视频后复活");
+    addLog("人生复活",reviveLabel+"。本局唯一一次复活机会已经使用。");
     closeCrisis();
     saveState();
     resumePendingChoice();
@@ -2177,6 +2178,11 @@
   function requestAdRevive(button){
     if(rewardBusy||!AD_SERVICE||!pendingChoiceContinuation)return;
     if((state.reviveCount||0)>=1||state.adReviveUsed)return;
+    if(!AD_SERVICE.isRealAdAvailable()&&!shareReviveAllowed()){
+      performRevive("free");
+      saveState();
+      return;
+    }
     rewardBusy=true;
     var oldText=button&&button.textContent;
     if(button){button.disabled=true;button.textContent="正在加载激励视频…";}
@@ -2249,7 +2255,8 @@
       el("crisisUseBtn").textContent="分享复活 · 本局唯一一次";
       el("crisisAdBtn").hidden=false;
       el("crisisAdBtn").disabled=false;
-      el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"观看视频")+" · 复活";
+      var realRewarded=!!(AD_SERVICE&&AD_SERVICE.isRealAdAvailable&&AD_SERVICE.isRealAdAvailable());
+      el("crisisAdBtn").textContent=(realRewarded?(AD_SERVICE?AD_SERVICE.label():"观看视频"):"首发免费复活")+" · 本局唯一一次";
     }
 
     el("crisisContinueBtn").textContent="放弃复活，接受结局";
