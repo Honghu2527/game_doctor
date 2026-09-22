@@ -1,9 +1,10 @@
 (function(){
   "use strict";
 
+  var RUNTIME=(typeof window!=="undefined"&&window.__WECHAT_CONFIG__)||{};
   var CONFIG={
-    // 开发版按当前玩法开启。正式微信小程序提审前可一键关闭。
-    shareReviveEnabled:true
+    // 正式提审版默认关闭“分享换复活”；普通分享仍然可用。
+    shareReviveEnabled:!RUNTIME.reviewSafe
   };
 
   function defaultPayload(){
@@ -16,6 +17,17 @@
 
   function share(payload){
     payload=Object.assign(defaultPayload(),payload||{});
+    if(typeof wx!=="undefined"&&wx&&typeof wx.showShareMenu==="function"){
+      try{
+        wx.showShareMenu({menus:["shareAppMessage","shareTimeline"]});
+        if(typeof wx.showToast==="function"){
+          wx.showToast({title:"请点右上角分享",icon:"none"});
+        }
+        return Promise.resolve({ok:true,mode:"wechat-menu"});
+      }catch(e){
+        return Promise.reject(e);
+      }
+    }
     if(typeof navigator!=="undefined"&&navigator.share){
       return navigator.share({title:payload.title,text:payload.text,url:payload.url})
         .then(function(){return {ok:true,mode:"native"};});
