@@ -324,7 +324,8 @@
     if(state.flags.has("expert"))return "主任医师 / 临床专家";
     if(state.flags.has("academicianTrack"))return "主任医师 / 学术PI";
     if(state.flags.has("promotionSuccess"))return "副主任医师";
-    if(state.flags.has("researchTrack")||state.flags.has("clinicalTrack")||state.flags.has("lifeTrack"))return "主治医师";
+    if(!state.job&&(state.flags.has("postdoc")||state.flags.has("overseasPostdoc")))return "博士后 / 科研人员";
+    if(state.flags.has("researchTrack")||state.flags.has("clinicalTrack")||state.flags.has("lifeTrack"))return state.job?"主治医师":"医学科研 / 临床发展阶段";
     if(state.job)return state.job.startTitle;
     if(/^resident_/.test(state.scene||"")||state.flags.has("directResident"))return "规培 / 住院医师";
     return "";
@@ -1792,7 +1793,7 @@
 
     var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":e.type==="specialtySelect"?"科室分流":e.type==="specialty"?"科室专属":e.type==="educationSchool"?"选择院校":e.type==="educationApply"?"升学申请":e.type==="educationResult"?"录取查询":e.type==="language"?"英语成长":e.type==="jobMarket"?"求职竞争":e.type==="jobResult"?"招聘结果":"主线";
     el("typeChip").textContent=typeName;
-    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":e.type==="specialtySelect"?" specialty-select":e.type==="specialty"?" specialty":e.type==="educationSchool"||e.type==="educationApply"?" education":e.type==="educationResult"?" education-result":"");
+    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":e.type==="specialtySelect"?" specialty-select":e.type==="specialty"?" specialty":e.type==="educationSchool"||e.type==="educationApply"?" education":e.type==="educationResult"?" education-result":e.type==="language"?" language":e.type==="jobMarket"?" job-market":e.type==="jobResult"?" job-result":"");
 
     var panel=document.querySelector(".story-panel");
     panel.classList.toggle("key-scene",!!e.critical);
@@ -1818,6 +1819,9 @@
     else if(e.type==="resultSuccess"||e.type==="resultFail")el("effectHint").textContent="结果已经确定，但你对成功或失败的后续处理仍然会改变人生路线。";
     else if(e.type==="specialtySelect")el("effectHint").textContent="择科是长期分流：不同科室拥有不同的夜班强度、操作要求、科研机会和专属剧情。";
     else if(e.type==="specialty")el("effectHint").textContent="这是 "+currentSpecialtyName()+" 的专属事件；换一个科室，后续问题会完全不同。";
+    else if(e.type==="language")el("effectHint").textContent="英语会在这些日常选择里逐渐成长，并直接影响海外申请、国际会议和部分职业机会。";
+    else if(e.type==="jobMarket")el("effectHint").textContent="求职存在硬性门槛和竞争概率；换城市、医院层级或补强履历都会改变结果。";
+    else if(e.type==="jobResult")el("effectHint").textContent="达到门槛不代表一定录用；同批候选人、面试和随机性都会影响结果。";
     else if(e.type==="educationSchool")el("effectHint").textContent="院校选择会真实参与本局录取概率，录取成功后写入教育档案。";
     else if(e.type==="educationApply")el("effectHint").textContent="前面每一步准备都会累积到最终录取概率，不是最后一刻纯随机。";
     else if(e.type==="educationResult")el("effectHint").textContent="结果已经在点击查询时锁定；倒计时只模拟招生系统查询过程。";
