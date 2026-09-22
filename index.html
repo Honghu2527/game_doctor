@@ -3,19 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f4efe5">
+  <meta name="theme-color" content="#142b30">
   <meta name="description" content="医学生养成记录——中国医学生分支人生模拟器">
   <title>医学生养成记录</title>
-  <link rel="stylesheet" href="styles.css?v=0.6.0">
+  <link rel="stylesheet" href="styles.css?v=0.7.0">
 </head>
 <body>
   <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
   <main class="app-shell">
     <header class="topbar">
-      <div>
-        <div class="eyebrow">MED STUDENT LIFE SIMULATOR</div>
-        <h1>医学生养成记录</h1>
-        <p class="subtitle">从高考抽分、报考医学院，到规培、主治、副高、主任、专家与院士。每个选择都会留下痕迹。</p>
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">⚕</div>
+        <div>
+          <div class="eyebrow">MED STUDENT LIFE SIMULATOR</div>
+          <h1>医学生养成记录</h1>
+          <p class="subtitle">从出生条件、高考与择校，到升学、规培、科研、职称与职业终章。你走过的每一步都会留下痕迹。</p>
+        </div>
       </div>
       <div class="top-actions">
         <button id="continueBtn" class="ghost-btn" hidden>继续上次人生</button>
@@ -23,9 +26,20 @@
       </div>
     </header>
 
-    <section id="startScreen" class="panel start-panel">
-      <div class="hero-badge">中国医学生人生模拟器 · v0.6.0</div>
-      <h2>先决定你从怎样的家庭和城市出发。</h2>
+    <nav class="journey-ribbon" aria-label="医学人生阶段">
+      <span><b>01</b>出生</span><i></i>
+      <span><b>02</b>高考</span><i></i>
+      <span><b>03</b>医学院</span><i></i>
+      <span><b>04</b>升学</span><i></i>
+      <span><b>05</b>规培</span><i></i>
+      <span><b>06</b>职业</span><i></i>
+      <span><b>07</b>结局</span>
+    </nav>
+
+    <section id="startScreen" class="panel start-panel game-cover">
+      <div class="cover-orbit" aria-hidden="true"><span>⚕</span></div>
+      <div class="hero-badge">中国医学生人生模拟器 · v0.7.0</div>
+      <h2>一张录取通知书之前，人生已经写下了很多变量。</h2>
       <p class="intro">这一次，人生从出生条件开始：成长城市、家庭经济、是否独生子女、教育资源和医学家庭背景都会改变资源与机会成本。然后你再亲手“停下”高考分数，进入对应的本科或医学专科路线。</p>
       <div class="form-row">
         <label for="playerName">角色姓名</label>
@@ -133,12 +147,12 @@
       </section>
 
       <section class="status-grid" aria-label="角色属性">
-        <div class="status-card"><span>知识</span><strong id="statKnowledge">0</strong></div>
-        <div class="status-card"><span>体力</span><strong id="statEnergy">0</strong></div>
-        <div class="status-card"><span>心理</span><strong id="statMental">0</strong></div>
-        <div class="status-card"><span>金钱</span><strong id="statMoney">0</strong></div>
-        <div class="status-card"><span>科研</span><strong id="statResearch">0</strong></div>
-        <div class="status-card"><span>声望</span><strong id="statReputation">0</strong></div>
+        <div class="status-card" data-stat="knowledge"><div class="stat-icon">📚</div><div><span>知识</span><strong id="statKnowledge">0</strong></div><div class="stat-meter"><i id="meterKnowledge"></i></div></div>
+        <div class="status-card" data-stat="energy"><div class="stat-icon">⚡</div><div><span>体力</span><strong id="statEnergy">0</strong></div><div class="stat-meter"><i id="meterEnergy"></i></div></div>
+        <div class="status-card" data-stat="mental"><div class="stat-icon">🧠</div><div><span>心理</span><strong id="statMental">0</strong></div><div class="stat-meter"><i id="meterMental"></i></div></div>
+        <div class="status-card" data-stat="money"><div class="stat-icon">¥</div><div><span>金钱</span><strong id="statMoney">0</strong></div><div class="stat-meter"><i id="meterMoney"></i></div></div>
+        <div class="status-card" data-stat="research"><div class="stat-icon">🧪</div><div><span>科研</span><strong id="statResearch">0</strong></div><div class="stat-meter"><i id="meterResearch"></i></div></div>
+        <div class="status-card" data-stat="reputation"><div class="stat-icon">✦</div><div><span>声望</span><strong id="statReputation">0</strong></div><div class="stat-meter"><i id="meterReputation"></i></div></div>
       </section>
 
       <section class="panel story-panel">
@@ -183,35 +197,63 @@
         <div id="endingJourney" class="journey-grid"></div>
       </div>
       <div class="legacy-board">
-        <div class="eyebrow">MESSAGE TO THE NEXT STUDENT</div>
-        <h3>给下一位医学生的一句话</h3>
-        <p class="board-note">写给正在学医、准备学医，或者正在犹豫的人。当前网页版留言只保存在你的设备；微信小程序正式版将接入云端共享留言墙。</p>
+        <div class="board-head">
+          <div>
+            <div class="eyebrow">MESSAGE TO THE NEXT STUDENT</div>
+            <h3>给下一位医学生的一句话</h3>
+          </div>
+          <div class="live-badge"><i></i><span id="boardModeLabel">本地演示</span></div>
+        </div>
+        <p class="board-note">最新 10 条留言会自动滚动。网页版当前用本地数据演示完整交互；正式多人版接入云数据库后，新留言会实时推送到所有在线玩家。</p>
         <textarea id="legacyMessage" maxlength="200" placeholder="例如：别只盯着结果，先想清楚自己想成为什么样的医生。"></textarea>
         <div class="board-actions">
           <span id="messageCount">0 / 200</span>
           <button id="postMessageBtn" class="primary-btn">留下这句话</button>
         </div>
         <div id="messageFeedback" class="message-feedback" hidden></div>
-        <div id="messageWall" class="message-wall"></div>
+
+        <div class="ticker-head">
+          <div><strong>最新留言</strong><span>自动滚动 · 最近 10 条</span></div>
+          <button id="viewAllMessagesBtn" class="ghost-btn">查看全部留言</button>
+        </div>
+        <div id="messageTicker" class="message-ticker">
+          <div id="messageTickerTrack" class="message-ticker-track"></div>
+        </div>
+
+        <section id="allMessagesPanel" class="all-messages-panel" hidden>
+          <div class="all-messages-toolbar">
+            <div>
+              <strong>全部留言</strong>
+              <span id="allMessageCount"></span>
+            </div>
+            <div class="board-sort">
+              <button class="filter-btn active" data-board-sort="newest">最新</button>
+              <button class="filter-btn" data-board-sort="liked">最多点赞</button>
+              <button id="closeAllMessagesBtn" class="mini-btn">收起</button>
+            </div>
+          </div>
+          <div id="messageWall" class="message-wall"></div>
+        </section>
       </div>
       <button id="endingRestartBtn" class="primary-btn">重新开启一局</button>
     </section>
 
     <footer>
-      <span>Prototype · Honghu2527/game_doctor · v0.6.0</span>
+      <span>Prototype · Honghu2527/game_doctor · v0.7.0</span>
       <span>院校与分数为游戏化设定，不构成高考志愿或职业建议。</span>
     </footer>
   </main>
 
-  <script src="data/backgrounds.js?v=0.6.0"></script>
-  <script src="data/schools.js?v=0.6.0"></script>
-  <script src="data/events.js?v=0.6.0"></script>
-  <script src="data/school_system.js?v=0.6.0"></script>
-  <script src="data/schools_expansion.js?v=0.6.0"></script>
-  <script src="data/career_tree.js?v=0.6.0"></script>
-  <script src="data/college_route.js?v=0.6.0"></script>
-  <script src="data/opportunity_flows.js?v=0.6.0"></script>
-  <script src="data/college_opportunities.js?v=0.6.0"></script>
-  <script src="app.js?v=0.6.0"></script>
+  <script src="data/backgrounds.js?v=0.7.0"></script>
+  <script src="data/schools.js?v=0.7.0"></script>
+  <script src="data/events.js?v=0.7.0"></script>
+  <script src="data/school_system.js?v=0.7.0"></script>
+  <script src="data/schools_expansion.js?v=0.7.0"></script>
+  <script src="data/career_tree.js?v=0.7.0"></script>
+  <script src="data/college_route.js?v=0.7.0"></script>
+  <script src="data/opportunity_flows.js?v=0.7.0"></script>
+  <script src="data/college_opportunities.js?v=0.7.0"></script>
+  <script src="board_adapter.js?v=0.7.0"></script>
+  <script src="app.js?v=0.7.0"></script>
 </body>
 </html>
