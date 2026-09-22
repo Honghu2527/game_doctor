@@ -1191,3 +1191,117 @@ body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/b
 /* build:v0.9.5-real-ai-backgrounds */
 
 /* build:v0.9.6-hq-undergrad */
+
+
+/* =========================================================
+   v0.10 — English stat, competitive job market, final status,
+   and mobile-safe full-background composition
+   ========================================================= */
+.status-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.status-card[data-stat="english"] .stat-icon{
+  background:#e8eef8!important;
+  color:#36577c!important;
+  font-size:11px;
+  letter-spacing:.04em;
+}
+.status-card[data-stat="english"] .stat-meter i{
+  background:linear-gradient(90deg,#4f6fa4,#85a4cf)!important;
+}
+
+.type-chip.language{
+  background:#e8eef8;
+  color:#405f87;
+  border-color:#cad7e9;
+}
+.type-chip.job-market,.type-chip.job-result{
+  background:#f5ecd9;
+  color:#765b2c;
+  border-color:#e2cfa7;
+}
+.job-choice{
+  background:
+    radial-gradient(circle at 96% 12%,rgba(181,139,69,.10),transparent 27%),
+    linear-gradient(145deg,#fffefa,#f8f5ed)!important;
+}
+.job-choice:disabled{
+  opacity:.55;
+  background:#f3f0e9!important;
+  border-style:dashed!important;
+}
+
+.ending-career-status{
+  margin:18px 0;
+  padding:18px 19px;
+  border:1px solid #d7cdbd;
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 98% 8%,rgba(181,139,69,.10),transparent 28%),
+    linear-gradient(145deg,#fffdf8,#f6f1e8);
+  box-shadow:0 10px 28px rgba(28,43,46,.06);
+}
+.ending-career-status>span{
+  display:block;
+  margin-bottom:6px;
+  color:#9a7540;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+.ending-career-status h3{
+  margin:0 0 7px;
+  color:#21373b;
+  font-size:clamp(20px,4vw,29px);
+}
+.ending-career-status p{
+  margin:0;
+  color:#697676;
+  line-height:1.6;
+}
+.ending-research-summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:12px;
+}
+.ending-research-summary span{
+  padding:6px 9px;
+  border-radius:999px;
+  background:#e9f0ec;
+  color:#345d55;
+  font-size:10px;
+  font-weight:800;
+}
+
+@media(max-width:900px){
+  .status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Mobile/web-app mode: show the whole landscape artwork instead of cropping it.
+   The lower hero area is extended with a matching dark base + gradient. */
+@media(max-width:760px){
+  .stage-backdrop{
+    height:560px!important;
+    background-size:100% auto!important;
+    background-position:center top!important;
+    background-repeat:no-repeat!important;
+    background-color:#183033!important;
+  }
+  body[data-stage-bg] .stage-backdrop{
+    background-position:center top!important;
+    background-size:100% auto!important;
+  }
+  .stage-backdrop::before{
+    background:
+      linear-gradient(90deg,rgba(14,27,30,.57),rgba(14,27,30,.15)),
+      linear-gradient(180deg,rgba(14,27,30,.02) 0%,rgba(14,27,30,.08) 52%,#183033 74%,#eee8dd 100%)!important;
+  }
+  .topbar{
+    min-height:235px!important;
+    padding-top:18px!important;
+  }
+  .dynamic-ribbon{
+    margin-top:0!important;
+  }
+  .status-grid{grid-template-columns:1fr 1fr!important}
+  .ending-career-status{padding:15px}
+}
