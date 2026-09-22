@@ -18,7 +18,9 @@ window.CAREER_DATA = {
     "specialty_select_clinical_master","specialty_select_academic_master","specialty_select_direct_phd","specialty_select_resident",
     "clinical_master","clinical_master_finish","academic_master","direct_phd","overseas_postgrad","master_opportunity_round","phd_decision",
     "edu_phd_domestic_school","edu_phd_overseas_school","edu_phd_direct_school","edu_phd_specialty","edu_phd_direction","edu_phd_prepare","edu_phd_interview","edu_phd_result","edu_phd_fail",
-    "phd_year1","phd_crisis","phd_global_round","phd_graduation","resident_entry","resident_night","resident_exam",
+    "phd_year1","phd_crisis","phd_global_round","phd_graduation",
+    "postdoc_research_start","overseas_postdoc_start","research_return_clinical","research_job_competition","research_early_career","research_midcareer","research_mature","research_final",
+    "resident_entry","resident_night","resident_exam",
     "job_choice","young_attending","career_opportunity_round","key_midcareer","promotion","director","final"
   ],
 
@@ -318,9 +320,89 @@ window.CAREER_DATA = {
       text:"毕业不是结束，而是你要决定把博士训练带回临床、留在学术系统，还是继续海外博后。",
       choices:[
         {text:"回医院，走临床+科研双线",sub:"需要重新把临床节奏接起来。",effects:{knowledge:5,research:5,reputation:4},flags:["phdToHospital"],route:"职业·博士回医院",next:"resident_entry"},
-        {text:"继续博后 / 科研岗",sub:"学术积累继续，但临床路径进一步后移。",effects:{research:10,reputation:5,money:-2},flags:["postdoc"],route:"职业·博后科研",next:"young_attending"},
-        {text:"海外博后再看",sub:"国际学术线继续延长。",effects:{research:8,reputation:6,money:-4},requires:{talents:{english:60}},flags:["overseasPostdoc"],route:"职业·海外博后",next:"young_attending"}
+        {text:"继续博后 / 科研岗",sub:"进入独立科研职业树，不会自动跳进主治医师路线。",effects:{research:10,reputation:5,money:-2},flags:["postdoc","researchCareer"],route:"职业·博后科研",next:"postdoc_research_start"},
+        {text:"海外博后再看",sub:"进入海外科研职业树；除非以后明确选择回临床，否则不会出现主治/科主任选项。",effects:{research:8,reputation:6,money:-4},requires:{talents:{english:60}},flags:["overseasPostdoc","researchCareer"],route:"职业·海外博后",next:"overseas_postdoc_start"}
       ]
+    },
+
+    postdoc_research_start:{
+      stage:"博士后 / 科研职业",year:"31-35岁",title:"博士毕业以后，你第一次真正站在“科研职业”而不是“学生”这一边",type:"main",
+      text:"博后不是住院医师，也不是主治医师。你现在面对的是合同年限、独立课题、基金、论文和下一份学术岗位。",
+      choices:[
+        {text:"把博后做成独立PI的跳板",sub:"优先基金、通讯/一作论文和独立研究方向。",effects:{research:10,reputation:5,energy:-7},flags:["postdocPITrack"],route:"科研职业·独立PI准备",next:"research_job_competition"},
+        {text:"走研究所 / 平台科学家路线",sub:"更强调方法、平台和稳定研究产出。",effects:{research:8,knowledge:4,mental:2},flags:["postdocScientistTrack"],route:"科研职业·研究员",next:"research_job_competition"},
+        {text:"明确想重新回到临床",sub:"只有主动选择这一项，才重新接临床资格、规培和医院求职。",effects:{knowledge:3,mental:-2},flags:["researchReturnClinical"],route:"科研→临床回流",next:"research_return_clinical"}
+      ]
+    },
+
+    overseas_postdoc_start:{
+      stage:"海外博士后",year:"31-36岁",title:"海外博后开始后，你的评价体系彻底变成了论文、基金、推荐信和独立性",type:"main",
+      text:"这里不会自动出现“主治医师”选项。你当前是一名科研人员，未来可以继续海外学术、回国申青年PI/人才岗、进入产业研发，或者明确决定重新回临床。",
+      choices:[
+        {text:"留海外冲 Faculty / 独立 PI",sub:"英语、论文、基金和独立研究方向决定上限。",effects:{research:11,reputation:6,energy:-8},talentEffects:{english:2},flags:["overseasFacultyTrack"],route:"科研职业·海外Faculty",next:"research_job_competition"},
+        {text:"回国申请青年 PI / 人才岗位",sub:"回国平台、论文和独立性进入同一轮竞争。",effects:{research:9,reputation:7,energy:-6},flags:["returnTalentTrack"],route:"科研职业·回国青年PI",next:"research_job_competition"},
+        {text:"转生物医药 / 医学研发",sub:"离开传统教职竞争，保留医学科研能力。",effects:{research:6,money:9,mental:4},flags:["industryResearch"],route:"科研职业·产业研发",researchEmployer:{name:"生物医药 / 医学研发机构",title:"医学科研 / R&D Scientist"},next:"research_early_career"},
+        {text:"明确决定回临床",sub:"这不是自动衔接；需要根据你之前是否完成规培决定下一步。",effects:{knowledge:3,mental:-2},flags:["researchReturnClinical"],route:"科研→临床回流",next:"research_return_clinical"}
+      ]
+    },
+
+    research_return_clinical:{
+      stage:"⚠️ 关键节点 · 科研转回临床",year:"32-37岁",title:"做了几年科研以后，你决定重新穿回临床白大褂",type:"key",critical:true,
+      warning:"科研经历不会自动等同于临床资质。是否已经完成规培，会直接决定你能不能进入医院岗位竞争。",
+      text:"这是一次真正的职业转轨，而不是从海外博后直接变成主治医师。",
+      choices:[
+        {text:"我已完成专硕并轨规培，直接进入医院岗位竞争",sub:"重新按城市、医院层级和简历要求求职。",showIfFlags:["integratedResidencyFinished"],effects:{knowledge:2,reputation:2},next:"job_choice"},
+        {text:"我此前已经完成规培，重新进入医院岗位竞争",sub:"科研履历会成为加分项，但岗位仍需竞争。",showIfFlags:["residentPassed"],effects:{knowledge:2,reputation:2},next:"job_choice"},
+        {text:"我还没有完成规培，先补临床训练",sub:"学硕/直博/纯科研路线回临床时不能跳过这一段。",hideIfFlags:["integratedResidencyFinished","residentPassed"],effects:{mental:-2,knowledge:3},next:"resident_entry"},
+        {text:"想清楚后还是继续科研",sub:"回到科研岗位竞争，不强行转轨。",effects:{mental:3,research:2},next:"research_job_competition"}
+      ]
+    },
+
+    research_job_competition:{
+      stage:"科研岗位竞争",year:"33-38岁",title:"博后结束不等于自动拿到教职：你需要竞争下一份科研岗位",type:"key",critical:true,
+      warning:"论文、Q1成果、累计IF、英语、推荐信、独立研究方向和平台都会影响结果。",
+      text:"和医院求职一样，科研岗位也不是一点就中。你只能重点冲一个方向。",
+      choices:[
+        {text:"申请高校青年 PI / 助理教授",sub:"独立性要求最高，失败后可能继续博后或转研究员。",effects:{energy:-5,mental:-2},chance:{p:.34,bonusBy:["research","reputation","english","researchSense"],success:{research:6,reputation:8,mental:4},fail:{mental:-4},successFlags:["youngPI"],failFlags:["youngPIMiss"]},successResearchEmployer:{name:"大学 / 医学院科研平台",title:"青年 PI / 助理教授"},failResearchEmployer:{name:"博士后 / 合作课题组",title:"博士后研究人员"},next:"research_early_career"},
+        {text:"申请研究所 / 核心平台研究员",sub:"更看方法能力、稳定产出和团队协作。",effects:{energy:-4},chance:{p:.46,bonusBy:["research","knowledge","reputation"],success:{research:7,reputation:5,mental:4},fail:{mental:-3},successFlags:["researchScientist"],failFlags:["researchScientistMiss"]},successResearchEmployer:{name:"医学研究所 / 核心科研平台",title:"研究员 / Research Scientist"},failResearchEmployer:{name:"科研合作平台",title:"项目研究人员"},next:"research_early_career"},
+        {text:"申请医院科研平台 / 转化中心纯科研岗",sub:"在医院工作，但不是自动进入临床医生职称序列。",effects:{research:5,reputation:3,energy:-4},chance:{p:.48,bonusBy:["research","knowledge","reputation"],success:{research:6,reputation:6},fail:{mental:-3},successFlags:["hospitalResearch"],failFlags:["hospitalResearchMiss"]},successResearchEmployer:{name:"医院科研平台 / 转化医学中心",title:"科研平台主管 / 研究人员"},failResearchEmployer:{name:"合作实验室",title:"项目研究人员"},next:"research_early_career"}
+      ]
+    },
+
+    research_early_career:{
+      stage:"科研职业 · 青年阶段",year:"35-42岁",title:"现在追着你的不是夜班表，而是基金截止日期、论文和课题组工资",type:"main",
+      text:"你已经进入科研职业。临床病例量不再是主线，独立课题、团队和持续产出才是。",
+      choices:[
+        {text:"冲独立基金和高质量论文",sub:"高风险高回报。",effects:{research:11,reputation:6,energy:-8,mental:-5},flags:["researchGrantTrack"],next:"research_midcareer"},
+        {text:"建立稳定的方法 / 数据平台",sub:"不一定最耀眼，但更稳定。",effects:{research:8,knowledge:5,reputation:4,energy:-5},flags:["researchPlatformTrack"],next:"research_midcareer"},
+        {text:"把生活边界也纳入职业设计",sub:"放慢一点，但希望科研能长期做下去。",effects:{mental:9,energy:6,research:4},flags:["researchLifeTrack"],next:"research_midcareer"}
+      ]
+    },
+
+    research_midcareer:{
+      stage:"科研职业 · 中期",year:"40-50岁",title:"你开始决定自己究竟要建一个课题组、一个平台，还是一条产业研发线",type:"main",
+      text:"科研职业也有完全不同的成熟路径，并不是所有人最后都成为临床科主任。",
+      choices:[
+        {text:"建立独立课题组 / PI团队",sub:"基金、学生和学术方向都由你承担。",effects:{research:12,reputation:9,energy:-7},flags:["independentPI"],route:"科研职业·独立PI",next:"research_mature"},
+        {text:"成为研究所 / 平台资深科学家",sub:"方法、平台和大型合作成为核心。",effects:{research:9,reputation:7,knowledge:5},flags:["seniorScientist"],route:"科研职业·资深研究员",next:"research_mature"},
+        {text:"转向产业研发负责人",sub:"研发管理和转化价值取代传统教职评价。",effects:{money:12,research:6,reputation:5,mental:3},flags:["industryLead"],route:"科研职业·产业研发负责人",researchEmployer:{name:"生物医药 / 医疗科技研发机构",title:"研发负责人 / Principal Scientist"},next:"research_mature"}
+      ]
+    },
+
+    research_mature:{
+      stage:"科研职业 · 成熟期",year:"48-60岁",title:"年轻研究者开始叫你“老师”，但这一次不是因为你在病房带组",type:"main",
+      text:"你的影响力来自研究方向、平台、论文、团队和培养学生，而不是临床职称。",
+      choices:[
+        {text:"继续做学术PI和人才培养",sub:"把自己的研究方向传下去。",effects:{research:12,reputation:10},flags:["seniorPI"],next:"research_final"},
+        {text:"建设大型科研平台 / 多中心网络",sub:"个人论文减少，平台影响力增加。",effects:{research:8,reputation:12,energy:-5},flags:["researchLeader"],next:"research_final"},
+        {text:"专注转化与产业落地",sub:"让研究成果更快进入真实应用。",effects:{research:6,money:10,reputation:7},flags:["translationLeader"],next:"research_final"}
+      ]
+    },
+
+    research_final:{
+      stage:"科研职业终章",year:"60岁+",title:"回看这一条没有自动回到临床的医学科研人生",type:"main",
+      text:"你仍然来自医学，但你的职业身份最终由科研、团队、平台和转化工作定义，而不是住院医师、主治或科主任。",
+      choices:[{text:"查看科研人生结局",sub:"看看这一条时间线最终留下了什么。",effects:{},next:"__END__"}]
     },
 
     resident_entry:{
