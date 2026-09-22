@@ -11,9 +11,13 @@ window.CAREER_DATA = {
   order:[
     "fresh_elite_research","fresh_elite_clinical","fresh_innovation","fresh_strong_medical","fresh_regional","fresh_growth",
     "white_coat_oath","key_undergrad_identity","ug_research_route","ug_clinical_route","ug_balanced_route","ug_global_route",
-    "ug_opportunity_fair","clinical_exposure","key_graduation","grad_exam_route","exam_fail_choice","recommended_postgrad",
+    "ug_opportunity_fair","clinical_exposure","key_graduation",
+    "edu_master_recommend_type","edu_master_exam_type","edu_master_school","edu_master_specialty","edu_master_prepare","edu_master_interview","edu_master_result",
+    "edu_master_overseas_school","edu_master_overseas_direction","edu_master_overseas_prepare","edu_master_overseas_interview","edu_master_overseas_result",
+    "grad_exam_route","exam_fail_choice","recommended_postgrad",
     "specialty_select_clinical_master","specialty_select_academic_master","specialty_select_direct_phd","specialty_select_resident",
     "clinical_master","clinical_master_finish","academic_master","direct_phd","overseas_postgrad","master_opportunity_round","phd_decision",
+    "edu_phd_domestic_school","edu_phd_overseas_school","edu_phd_direct_school","edu_phd_specialty","edu_phd_direction","edu_phd_prepare","edu_phd_interview","edu_phd_result","edu_phd_fail",
     "phd_year1","phd_crisis","phd_global_round","phd_graduation","resident_entry","resident_night","resident_exam",
     "job_choice","young_attending","career_opportunity_round","key_midcareer","promotion","director","final"
   ],
@@ -167,10 +171,10 @@ window.CAREER_DATA = {
       warning:"这是第一场真正改变职业结构的选择。读研、直接就业规培、海外项目会进入完全不同的事件链；后面不会自动汇回同一条路。",
       text:"毕业证到手以后，你第一次真正面对路径选择。学校平台、成绩、科研、英语和家庭经济都会影响哪些选项值得赌。",
       choices:[
-        {text:"申请保研 / 推免",sub:"适合成绩和综合表现较强的人；成功后可选临床专硕、学硕或部分直博路线。",effects:{energy:-3},requires:{stats:{knowledge:62}},chance:{p:.52,bonusBy:["knowledge","research","reputation"],success:{mental:7,reputation:5},fail:{mental:-5},successFlags:["recommended"],failFlags:["recommendFailed"]},successNext:"recommended_postgrad",failNext:"grad_exam_route",route:"升学·推免申请"},
-        {text:"参加全国硕士研究生考试",sub:"可以通过一次考试重新选择平台和城市。",effects:{knowledge:5,energy:-7,mental:-5},flags:["gradExam"],route:"升学·考研",next:"grad_exam_route"},
+        {text:"申请保研 / 推免",sub:"先选择目标院校、培养类型与专业方向，再经历材料与面试评审。",effects:{energy:-2},requires:{stats:{knowledge:62}},flags:["recommendApplicant"],route:"升学·推免申请",next:"edu_master_recommend_type"},
+        {text:"参加全国硕士研究生考试",sub:"先选择目标院校和专业，再经历备考、初试/复试策略与录取查询。",effects:{energy:-3,mental:-2},flags:["gradExam"],route:"升学·考研",next:"edu_master_exam_type"},
         {text:"直接就业 / 进入规培",sub:"不读研，先选规培方向，再进入住院医师规范化培训。",effects:{money:5,reputation:2},flags:["noMaster","directResident"],route:"临床·本科后直接规培",next:"specialty_select_resident"},
-        {text:"申请海外研究型项目",sub:"高英语/科研更有优势；费用和不确定性更高。",effects:{money:-5,energy:-4},requires:{talents:{english:58}},chance:{p:.36,bonusBy:["english","researchSense","research"],success:{reputation:7,research:7,mental:6},fail:{money:-3,mental:-5},successFlags:["overseasOffer"],failFlags:["overseasRejected"]},successNext:"overseas_postgrad",failNext:"grad_exam_route",route:"升学·海外申请"}
+        {text:"申请海外研究型项目",sub:"先选海外院校和研究方向，再准备材料、面试并等待录取结果。",effects:{money:-3,energy:-2},requires:{talents:{english:58}},flags:["overseasApplicant"],route:"升学·海外申请",next:"edu_master_overseas_school"}
       ]
     },
 
@@ -181,7 +185,7 @@ window.CAREER_DATA = {
       choices:[
         {text:"临床医学专业型硕士",sub:"先选择专科方向；游戏中按专硕与规培并轨推进，临床任务重、科研时间更碎。",effects:{knowledge:6,reputation:3,energy:-4},flags:["clinicalMaster","integratedResidency"],route:"研究生·临床专硕（并轨规培）",next:"specialty_select_clinical_master"},
         {text:"学术型硕士",sub:"先选择研究学科；以科研训练为主，不自动完成规培。",effects:{research:8,mental:-2},flags:["academicMaster"],route:"研究生·学硕（科研训练）",next:"specialty_select_academic_master"},
-        {text:"尝试直博 / 长学制科研路线",sub:"科研基础较强时可冲；直博先选学科方向，但不等于已经完成规培。",effects:{research:6,energy:-3},requires:{stats:{research:35}},chance:{p:.45,bonusBy:["research","researchSense","reputation"],success:{research:6,reputation:6,mental:5},fail:{mental:-4},successFlags:["directPhdOffer"],failFlags:["directPhdMiss","academicMaster"]},successNext:"specialty_select_direct_phd",failNext:"specialty_select_academic_master",route:"博士·直博申请"}
+        {text:"尝试直博 / 长学制科研路线",sub:"先选博士院校、学科和研究方向，再经历导师匹配、材料与面试；不会一点就上岸。",effects:{research:4,energy:-2},requires:{stats:{research:35}},flags:["directPhdCandidate"],route:"博士·直博申请",next:"edu_phd_direct_school"}
       ]
     },
 
@@ -200,7 +204,7 @@ window.CAREER_DATA = {
       warning:"二战会损失一年时间和心理资源；直接就业会关闭当前全日制硕士路线，但你会更早进入临床。",
       text:"成绩出来了。人生没有按照计划推进，但你仍然有选择。",
       choices:[
-        {text:"二战，再来一次",sub:"再付出一年，下一次成功率略提高；再次失败后仍可直接规培。",effects:{mental:-7,money:-4,knowledge:5},chance:{p:.62,bonusBy:["knowledge","resilience"],success:{mental:8,reputation:4},fail:{mental:-10},successFlags:["secondTrySuccess"],failFlags:["secondTryFail"]},successNext:"recommended_postgrad",failNext:"specialty_select_resident",route:"升学·二战"},
+        {text:"二战，再来一次",sub:"再付出一年，但仍然要重新选学校、专业、准备初试与复试。",effects:{mental:-5,money:-4,knowledge:4},flags:["secondTry"],route:"升学·二战",next:"edu_master_exam_type"},
         {text:"接受现实，直接进入规培/就业",sub:"先选规培科室，不再把下一年押在考研上。",effects:{money:4,mental:3},flags:["noMaster","directResident"],route:"临床·考研后直接规培",next:"specialty_select_resident"}
       ]
     },
@@ -269,8 +273,8 @@ window.CAREER_DATA = {
       warning:"博士不是“硕士多读几年”。它会显著推迟稳定收入，但打开更高学术与部分高平台岗位；不读博会更早进入临床和职业晋升。",
       text:"导师、同学、家人给你的建议各不相同。真正要承担后果的是你自己。",
       choices:[
-        {text:"国内读博",sub:"继续科研训练，未来学术和高平台岗位更有空间。",effects:{research:7,energy:-4,mental:-3},requires:{stats:{research:30}},flags:["phdDomestic"],route:"博士·国内",next:"phd_year1"},
-        {text:"申请海外博士",sub:"英语、科研和推荐要求更高；成功率不确定。",effects:{money:-5,energy:-4},requires:{talents:{english:60}},chance:{p:.38,bonusBy:["english","researchSense","research","reputation"],success:{reputation:8,research:6,mental:6},fail:{mental:-5,money:-2},successFlags:["phdOverseas"],failFlags:["phdOverseasFail"]},successNext:"phd_year1",failNext:"resident_entry",route:"博士·海外申请"},
+        {text:"申请国内博士",sub:"先选博士院校与学科，再联系导师、准备研究计划和面试，最后查询录取结果。",effects:{research:3,energy:-2,mental:-2},requires:{stats:{research:30}},flags:["phdDomesticApplicant"],route:"博士·国内申请",next:"edu_phd_domestic_school"},
+        {text:"申请海外博士",sub:"先选择海外院校，再准备研究计划、推荐信与面试；不会直接判定录取。",effects:{money:-3,energy:-2},requires:{talents:{english:60}},flags:["phdOverseasApplicant"],route:"博士·海外申请",next:"edu_phd_overseas_school"},
         {text:"不读博：临床专硕毕业直接求职",sub:"你已经在专硕阶段完成并轨规培，不再重复从规培第一年开始。",effects:{money:5,mental:5},showIfFlags:["clinicalMaster"],flags:["noPhd"],route:"临床·专硕毕业就业",next:"clinical_master_finish"},
         {text:"不读博：学硕毕业后回临床规培",sub:"学硕阶段没有自动完成规培；如果要继续临床，需要进入规范化培训。",effects:{money:3,mental:4},showIfFlags:["academicMaster"],flags:["noPhd"],route:"临床·学硕后规培",next:"resident_entry"},
         {text:"不读博：海外项目结束后回国衔接临床",sub:"需要重新衔接本地临床培训与岗位路径。",effects:{money:3,mental:4},showIfFlags:["overseasOffer"],flags:["noPhd"],route:"临床·海外项目后衔接",next:"specialty_select_resident"}
