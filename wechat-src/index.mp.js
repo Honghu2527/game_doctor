@@ -26,4 +26,9 @@ export default function createApp() {
   require('../ad_adapter.js')
   require('../share_adapter.js')
   require('../app.js')
+
+  if(window.AD_SERVICE&&window.AD_SERVICE.isRealAdAvailable&&!window.AD_SERVICE.isRealAdAvailable()){
+    var supplyButton=document.getElementById('openSupplyBtn')
+    if(supplyButton)supplyButton.hidden=true
+  }
 }
