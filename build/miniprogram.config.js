@@ -1,5 +1,5 @@
 module.exports = {
-  origin: 'https://game-doctor.example.com',
+  origin: 'https://medical-life-sim.example.com',
   entry: '/',
   router: {
     index: ['/'],
@@ -14,7 +14,7 @@ module.exports = {
     // 上传前将环境变量 WECHAT_APPID 设置为你的小程序 AppID；
     // 未设置时使用 touristappid，仅用于开发者工具本地预览。
     appid: process.env.WECHAT_APPID || 'touristappid',
-    projectname: 'game-doctor-wechat',
+    projectname: 'medical-life-sim',
     setting: {
       urlCheck: false,
       es6: true,
@@ -24,6 +24,6 @@ module.exports = {
     },
   },
   packageConfig: {
-    author: 'Honghu2527',
+    author: 'Medical Life Simulator',
   },
 }
