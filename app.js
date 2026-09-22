@@ -82,7 +82,25 @@
     var h=state.educationHistory||{};
     if((state.flags.has("phdDomestic")||state.flags.has("phdOverseas")||state.flags.has("directPhdOffer"))&&h.phd)return h.phd.schoolName;
     if((state.flags.has("clinicalMaster")||state.flags.has("academicMaster")||state.flags.has("overseasOffer"))&&h.master)return h.master.schoolName;
-    return h.undergrad?h.undergrad.schoolName:(currentSchool()?currentSchool().name:"—");
+    return h.undergrad?h.undergrad.schoolName:(h.college?h.college.schoolName:(currentSchool()?currentSchool().name:"—"));
+  }
+
+  function ensureCollegeBachelorRecord(silent){
+    if(!state)return;
+    var h=state.educationHistory=state.educationHistory||{college:null,undergrad:null,master:null,phd:null,overseas:[]};
+    if(h.undergrad&&h.undergrad.level==="专科"&&!h.college){
+      h.college=h.undergrad;
+      h.undergrad=null;
+    }
+    if(!h.undergrad){
+      h.undergrad={
+        schoolId:"college-upgrade-bridge",
+        schoolName:"专升本本科衔接院校（游戏模拟）",
+        level:"本科",
+        major:"临床医学本科衔接"
+      };
+      if(!silent)addLog("教育经历","专升本成功：保留原专科经历，并新增本科衔接教育记录。");
+    }
   }
 
   function currentEmployerName(){
@@ -95,7 +113,8 @@
     var h=state&&state.educationHistory||{};
     if(h.phd)return 3;
     if(h.master)return 2;
-    return 1;
+    if(h.undergrad)return 1;
+    return 0;
   }
 
   function maxTrainingPlatform(){
@@ -413,6 +432,7 @@
     if(!state||!el("educationTimeline"))return;
     var h=state.educationHistory||{};
     var items=[];
+    if(h.college)items.push({level:"专科",school:h.college.schoolName,detail:h.college.major||"临床医学相关专业"});
     if(h.undergrad)items.push({level:h.undergrad.level||"本科",school:h.undergrad.schoolName,detail:h.undergrad.major||"临床医学"});
     if(h.master)items.push({level:"硕士",school:h.master.schoolName,detail:[h.master.type,h.master.specialty].filter(Boolean).join(" · ")});
     if(h.phd)items.push({level:"博士",school:h.phd.schoolName,detail:[h.phd.type,h.phd.specialty,h.phd.direction].filter(Boolean).join(" · ")});
@@ -437,6 +457,9 @@
 
     if(/^fresh_|white_coat|key_undergrad|ug_|clinical_exposure/.test(scene)){
       return {current:baseLabel+"培养",next:"毕业分流：升学 / 规培 / 海外",steps:[["出生","done"],["高考","done"],["医学院","done"],[baseLabel,"current"],["毕业分流","future"]]};
+    }
+    if(/^college_bachelor_/.test(scene)){
+      return {current:"专升本 · 本科衔接",next:"本科毕业后：考研 / 规培 / 海外",steps:[["医学专科","done"],["专升本","done"],["本科衔接","current"],["本科毕业分流","future"]]};
     }
     if(/^college_/.test(scene)){
       var collegeNext=/upgrade/.test(scene)?"本科衔接 / 实践就业":"专升本 / 基层实践";
@@ -824,7 +847,8 @@
       visitedSide:new Set(),
       applications:{},
       educationHistory:{
-        undergrad:{schoolId:school.id,schoolName:school.name,level:school.educationLevel||"本科",major:school.program||"临床医学"},
+        college:school.educationLevel==="专科"?{schoolId:school.id,schoolName:school.name,level:"专科",major:school.program||"临床医学相关专业"}:null,
+        undergrad:school.educationLevel==="专科"?null:{schoolId:school.id,schoolName:school.name,level:"本科",major:school.program||"临床医学"},
         master:null,phd:null,overseas:[]
       },
       eduApplication:null,
@@ -2040,6 +2064,7 @@
     var next=choice.next;
     if(success===true&&choice.successNext)next=choice.successNext;
     if(success===false&&choice.failNext)next=choice.failNext;
+    if(next==="college_bachelor_bridge")ensureCollegeBachelorRecord(false);
     if(state.flags.has("clinicalMaster")&&/^edu_phd_|phd_year1|direct_phd/.test(next||"")){
       state.flags.add("integratedResidencyFinished");
     }
@@ -2270,11 +2295,13 @@
   }
 
   function highestEducationLabel(){
-    if(state.flags.has("phdDomestic")||state.flags.has("phdOverseas")||state.flags.has("directPhdOffer"))return "博士路线";
-    if(state.flags.has("clinicalMaster")||state.flags.has("academicMaster")||state.flags.has("recommended")||state.flags.has("masterOffer"))return "硕士路线";
-    if(state.flags.has("collegeUpgradeSuccess")||state.flags.has("collegeUpgradeSecondSuccess")||state.flags.has("lateUpgradeSuccess"))return "专科 → 本科衔接";
-    var s=currentSchool();
-    return s&&s.educationLevel==="专科"?"医学专科路线":"本科路线";
+    var h=state.educationHistory||{};
+    if(h.phd)return "博士路线";
+    if(h.master)return "硕士路线";
+    if(h.undergrad&&h.college)return "专科 → 本科";
+    if(h.undergrad)return "本科路线";
+    if(h.college)return "医学专科路线";
+    return "医学教育路线";
   }
 
   function successfulApplications(){
@@ -2292,7 +2319,8 @@
     var school=currentSchool(),wins=successfulApplications();
     var items=[
       ["出生环境",backgroundShort(state.background)],
-      ["本科",state.educationHistory&&state.educationHistory.undergrad?state.educationHistory.undergrad.schoolName:(school?school.name:"—")],
+      ["专科",state.educationHistory&&state.educationHistory.college?state.educationHistory.college.schoolName:"—"],
+      ["本科",state.educationHistory&&state.educationHistory.undergrad?state.educationHistory.undergrad.schoolName:((school&&school.educationLevel!=="专科")?school.name:"—")],
       ["硕士",state.educationHistory&&state.educationHistory.master?state.educationHistory.master.schoolName+" · "+state.educationHistory.master.type:"—"],
       ["博士",state.educationHistory&&state.educationHistory.phd?state.educationHistory.phd.schoolName+" · "+state.educationHistory.phd.type:"—"],
       ["学历层级",highestEducationLabel()],
@@ -2508,9 +2536,14 @@
     state.applications=raw.applications||{};
     state.activeOpportunity=raw.activeOpportunity||null;
     state.educationHistory=raw.educationHistory||{
-      undergrad:{schoolId:raw.schoolId,schoolName:(schoolById(raw.schoolId)||{}).name||"本科院校",level:(schoolById(raw.schoolId)||{}).educationLevel||"本科",major:(schoolById(raw.schoolId)||{}).program||"临床医学"},
+      college:(schoolById(raw.schoolId)||{}).educationLevel==="专科"?{schoolId:raw.schoolId,schoolName:(schoolById(raw.schoolId)||{}).name||"专科院校",level:"专科",major:(schoolById(raw.schoolId)||{}).program||"临床医学相关专业"}:null,
+      undergrad:(schoolById(raw.schoolId)||{}).educationLevel==="专科"?null:{schoolId:raw.schoolId,schoolName:(schoolById(raw.schoolId)||{}).name||"本科院校",level:"本科",major:(schoolById(raw.schoolId)||{}).program||"临床医学"},
       master:null,phd:null,overseas:[]
     };
+    if(!state.educationHistory.college&&state.educationHistory.undergrad&&state.educationHistory.undergrad.level==="专科"){
+      state.educationHistory.college=state.educationHistory.undergrad;
+      state.educationHistory.undergrad=null;
+    }
     state.eduApplication=raw.eduApplication||null;
     state.pendingAdmissionResult=null;
     state.publications=raw.publications||[];
@@ -2535,6 +2568,9 @@
     state.stats=state.stats||{};
     if(state.stats.english===undefined)state.stats.english=(state.talents&&state.talents.english)||50;
     if(state.talents&&state.talents.english===undefined)state.talents.english=state.stats.english;
+    if((state.flags.has("collegeUpgradeSuccess")||state.flags.has("collegeUpgradeSecondSuccess")||state.flags.has("lateUpgradeSuccess"))&&!state.educationHistory.undergrad){
+      ensureCollegeBachelorRecord(true);
+    }
     selectedDifficulty=state.difficulty||"normal";
     pendingName=state.name||"";
     el("playerName").value=pendingName;
