@@ -1,0 +1,339 @@
+
+  <div id="stageBackdrop" class="stage-backdrop" aria-hidden="true"></div>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">
+          <img src="/common/assets/ui/medical-logo.webp?v=0102" alt="" width="192" height="192">
+        </div>
+        <div class="brand-copy">
+          <div class="eyebrow">MED STUDENT LIFE SIMULATOR</div>
+          <h1>医学生养成记录</h1>
+          <p class="subtitle">从出生条件、高考与择校，到升学、规培、科研、职称与职业终章。你走过的每一步都会留下痕迹。</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="continueBtn" class="ghost-btn" hidden>继续上次人生</button>
+        <button id="restartBtn" class="ghost-btn" hidden>重新开始</button>
+      </div>
+    </header>
+
+    <nav id="journeyRibbon" class="journey-ribbon dynamic-ribbon" aria-label="当前医学人生进度">
+      <div class="journey-status">
+        <span class="journey-kicker">CURRENT STAGE</span>
+        <strong id="journeyCurrent">出生档案</strong>
+        <small id="journeyNext">下一阶段：高考放榜</small>
+      </div>
+      <div id="journeySteps" class="journey-steps"></div>
+    </nav>
+
+    <section id="startScreen" class="panel start-panel game-cover">
+      <div class="cover-orbit" aria-hidden="true"><span>⚕</span></div>
+      <div class="hero-badge">中国医学生人生模拟器 · v0.11.4</div>
+      <h2>一张录取通知书之前，人生已经写下了很多变量。</h2>
+      <p class="intro">这一次，人生从出生条件开始：成长城市、家庭经济、是否独生子女、教育资源和医学家庭背景都会改变资源与机会成本。然后你再亲手“停下”高考分数，进入对应的本科或医学专科路线。</p>
+      <div class="form-row">
+        <label for="playerName">角色姓名</label>
+        <input id="playerName" maxlength="12" value="小张" autocomplete="off">
+      </div>
+      <div class="section-label">出生档案</div>
+      <div class="birth-grid">
+        <label class="birth-field"><span>成长环境</span><select id="birthHometown"></select></label>
+        <label class="birth-field"><span>独生子女</span><select id="birthOnlyChild"></select></label>
+        <label class="birth-field"><span>家庭经济</span><select id="birthEconomy"></select></label>
+        <label class="birth-field"><span>家庭教育资源</span><select id="birthEducation"></select></label>
+        <label class="birth-field"><span>医学家庭背景</span><select id="birthMedical"></select></label>
+      </div>
+      <div id="birthPreview" class="birth-preview"></div>
+      <div class="birth-note">出生条件只影响游戏中的资源、信息差和机会成本，不代表现实中任何群体的能力或价值。</div>
+
+      <div class="section-label">人生难度</div>
+      <div id="difficultyGrid" class="difficulty-grid"></div>
+      <div class="start-note">出生条件、学校生态与人生难度会叠加，但任何开局都保留后续升学和路线转换机会。</div>
+      <button id="startBtn" class="primary-btn">确认出生档案 · 进入高考放榜日</button>
+    </section>
+
+    <section id="gaokaoScreen" class="panel gaokao-panel" hidden>
+      <div class="hero-badge">第一关 · 高考放榜</div>
+      <h2>750 分，总有一个数字会停在你面前。</h2>
+      <p class="intro">点击“开始滚动”，分数会在更广的 280–745 游戏区间内快速变化；当你觉得就是现在，点击“停止”。出生资源只会产生小幅度影响，不会直接决定结果。</p>
+      <div class="score-machine">
+        <div class="score-label">高考总分</div>
+        <div id="scoreDisplay" class="score-display">---</div>
+        <div class="score-total">/ 750</div>
+      </div>
+      <div class="score-actions">
+        <button id="rollBtn" class="primary-btn">开始滚动</button>
+        <button id="stopBtn" class="danger-btn" disabled>停止！</button>
+      </div>
+      <div id="scoreResult" class="score-result" hidden></div>
+      <div id="scoreEligibility" class="score-eligibility" hidden></div>
+    </section>
+
+    <section id="schoolScreen" class="panel school-panel" hidden>
+      <div class="panel-title-row">
+        <div>
+          <div class="eyebrow">VOLUNTEER APPLICATION</div>
+          <h2>选择你的医学院校</h2>
+        </div>
+        <div class="score-pill"><span>高考</span><strong id="schoolScore">0</strong></div>
+      </div>
+      <div id="bandCard" class="band-card"></div>
+      <p class="school-disclaimer">以下分数仅用于游戏难度分层，不代表真实录取线。真实高考录取取决于省份、年份、位次、选科与专业组；专科院校的具体招生专业也以当年官方招生计划为准。</p>
+      <div class="school-tools">
+        <input id="schoolSearch" type="search" placeholder="搜索学校或城市，例如：山东、重庆、医科大学">
+        <div class="school-filter-row">
+          <button class="filter-btn active" data-level="all">全部</button>
+          <button class="filter-btn" data-level="本科">本科</button>
+          <button class="filter-btn" data-level="专科">专科</button>
+          <span id="schoolResultCount"></span>
+        </div>
+      </div>
+      <div id="schoolGrid" class="school-grid"></div>
+    </section>
+
+    <section id="letterScreen" class="panel letter-panel" hidden>
+      <div class="admission-letter">
+        <div class="letter-corner">GAME SIMULATION</div>
+        <div class="letter-school" id="letterSchool"></div>
+        <div class="letter-title">录 取 通 知 书</div>
+        <div class="letter-body">
+          <p><strong id="letterName"></strong> 同学：</p>
+          <p>祝贺你在本轮人生模拟中被 <strong id="letterSchoolInline"></strong> <strong id="letterProgramInline">临床医学专业</strong>录取。</p>
+          <p>你的高考成绩为 <strong id="letterScore"></strong> 分。愿你从今天起，真正开始理解“医学”这两个字的重量。</p>
+        </div>
+        <div class="letter-meta">
+          <span id="letterProgram">专业：临床医学</span>
+          <span id="letterLevel">层次：本科</span>
+          <span id="letterDuration">学制：游戏模拟</span>
+        </div>
+        <div class="fake-seal">录取</div>
+      </div>
+      <div id="birthSummaryCard" class="school-effect-summary"></div>
+      <div id="schoolEffectSummary" class="school-effect-summary"></div>
+      <div class="school-ecosystem-card">
+        <div class="eyebrow">SCHOOL ECOSYSTEM</div>
+        <h3 id="profileName">培养生态</h3>
+        <p id="profileDesc"></p>
+        <div id="profileTags" class="school-tags"></div>
+      </div>
+      <div class="talent-panel">
+        <div class="panel-title-row">
+          <div><div class="eyebrow">INITIAL TALENTS</div><h3>入学天赋</h3></div>
+          <span class="talent-note">高考影响学术型天赋期望值，但不会决定全部人生。</span>
+        </div>
+        <div id="talentGrid" class="talent-grid"></div>
+      </div>
+      <button id="enterUniversityBtn" class="primary-btn">确认入学 · 开启医学人生</button>
+    </section>
+
+    <section id="gameScreen" hidden>
+      <section class="career-strip">
+        <div><span>当前院校</span><strong id="metaSchool">—</strong></div>
+        <div><span>高考</span><strong id="metaScore">—</strong></div>
+        <div><span>模式</span><strong id="metaDifficulty">—</strong></div>
+        <div><span>培养生态</span><strong id="metaProfile">—</strong></div>
+        <div><span>当前路线</span><strong id="metaRoute">本科·未分流</strong></div>
+        <div><span>科室 / 学科</span><strong id="metaSpecialty">尚未选择</strong></div>
+        <div><span>当前单位</span><strong id="metaEmployer">尚未就业</strong></div>
+        <div><span>出生条件</span><strong id="metaBackground">—</strong></div>
+      </section>
+
+      <section class="education-record">
+        <div class="education-record-head">
+          <div><span>EDUCATION RECORD</span><strong>教育经历</strong></div>
+          <small>录取成功后自动写入，不覆盖之前学历</small>
+        </div>
+        <div id="educationTimeline" class="education-timeline"></div>
+      </section>
+
+      <section class="status-grid" aria-label="角色属性">
+        <div class="status-card" data-stat="knowledge"><div class="stat-icon">📚</div><div><span>知识</span><strong id="statKnowledge">0</strong></div><div class="stat-meter"><i id="meterKnowledge"></i></div></div>
+        <div class="status-card" data-stat="energy"><div class="stat-icon">⚡</div><div><span>体力</span><strong id="statEnergy">0</strong></div><div class="stat-meter"><i id="meterEnergy"></i></div></div>
+        <div class="status-card" data-stat="mental"><div class="stat-icon">🧠</div><div><span>心理</span><strong id="statMental">0</strong></div><div class="stat-meter"><i id="meterMental"></i></div></div>
+        <div class="status-card" data-stat="money"><div class="stat-icon">¥</div><div><span>金钱</span><strong id="statMoney">0</strong></div><div class="stat-meter"><i id="meterMoney"></i></div></div>
+        <div class="status-card" data-stat="research"><div class="stat-icon">🧪</div><div><span>科研</span><strong id="statResearch">0</strong></div><div class="stat-meter"><i id="meterResearch"></i></div></div>
+        <div class="status-card" data-stat="reputation"><div class="stat-icon">✦</div><div><span>声望</span><strong id="statReputation">0</strong></div><div class="stat-meter"><i id="meterReputation"></i></div></div>
+        <div class="status-card" data-stat="english"><div class="stat-icon">EN</div><div><span>英语</span><strong id="statEnglish">0</strong></div><div class="stat-meter"><i id="meterEnglish"></i></div></div>
+      </section>
+
+      <div id="reviveShareBanner" class="revive-share-banner" hidden>
+        <div>
+          <strong>你已经重新站起来了</strong>
+          <span id="reviveShareText">本局复活 1 / 2。分享你的医学人生给朋友，不影响任何游戏奖励。</span>
+        </div>
+        <button id="reviveShareBtn" class="mini-btn">分享这一局</button>
+      </div>
+
+      <section class="inventory-bar" aria-label="人生道具">
+        <div class="inventory-head">
+          <div><span>TOOLKIT</span><strong>🎒 人生道具</strong></div>
+          <small id="inventoryLockNote"></small>
+        </div>
+        <div id="inventoryItems" class="inventory-items"></div>
+        <button id="openSupplyBtn" class="mini-btn supply-btn">获取补给</button>
+      </section>
+
+      <section class="panel story-panel">
+        <div class="timeline-row">
+          <span id="stageChip" class="stage-chip"></span>
+          <span id="typeChip" class="type-chip"></span>
+          <span id="yearText" class="year-text"></span>
+        </div>
+        <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        <div id="criticalBanner" class="critical-banner" hidden>
+          <strong id="criticalTitle">⚠️ 关键人生选择</strong>
+          <span id="criticalText"></span>
+        </div>
+        <div id="opportunityBanner" class="opportunity-banner" hidden>
+          <strong>🎯 竞争性机会</strong>
+          <span id="opportunityText"></span>
+        </div>
+        <h2 id="sceneTitle"></h2>
+        <p id="sceneText" class="scene-text"></p>
+        <div id="effectHint" class="effect-hint"></div>
+        <div id="decisionHintPanel" class="decision-hint-panel" hidden>
+          <div><strong>💡 决策提示</strong><span>只展示可能影响，不提供“正确答案”。</span></div>
+          <div id="decisionHintContent"></div>
+        </div>
+        <div id="choices" class="choices"></div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-title-row">
+          <div><div class="eyebrow">YOUR MEDICAL LIFE</div><h3>人生记录</h3></div>
+          <button id="toggleLogBtn" class="mini-btn">收起</button>
+        </div>
+        <div id="lifeLog" class="life-log"></div>
+      </section>
+    </section>
+
+    <section id="endingScreen" class="panel ending-panel" hidden>
+      <div class="hero-badge">人生结局</div>
+      <h2 id="endingTitle"></h2>
+      <p id="endingText"></p>
+      <div class="ending-career-status">
+        <span>FINAL STATUS · 本局终止时身份</span>
+        <h3 id="endingStatusHeadline">—</h3>
+        <p id="endingStatusMeta"></p>
+        <div id="endingResearchSummary" class="ending-research-summary"></div>
+      </div>
+      <div id="endingStats" class="ending-stats"></div>
+      <div id="endingTags" class="ending-tags"></div>
+      <div class="ending-journey">
+        <div class="eyebrow">CAREER ARCHIVE</div>
+        <h3>本轮生涯档案</h3>
+        <div id="endingJourney" class="journey-grid"></div>
+      </div>
+      <div class="legacy-board">
+        <div class="board-head">
+          <div>
+            <div class="eyebrow">MESSAGE TO THE NEXT STUDENT</div>
+            <h3>给下一位医学生的一句话</h3>
+          </div>
+          <div class="live-badge"><i></i><span id="boardModeLabel">本地演示</span></div>
+        </div>
+        <p class="board-note">最新 10 条留言会自动滚动。网页版当前用本地数据演示完整交互；正式多人版接入云数据库后，新留言会实时推送到所有在线玩家。</p>
+        <textarea id="legacyMessage" maxlength="200" placeholder="例如：别只盯着结果，先想清楚自己想成为什么样的医生。"></textarea>
+        <div class="board-actions">
+          <span id="messageCount">0 / 200</span>
+          <button id="postMessageBtn" class="primary-btn">留下这句话</button>
+        </div>
+        <div id="messageFeedback" class="message-feedback" hidden></div>
+
+        <div class="ticker-head">
+          <div><strong>最新留言</strong><span>自动滚动 · 最近 10 条</span></div>
+          <button id="viewAllMessagesBtn" class="ghost-btn">查看全部留言</button>
+        </div>
+        <div id="messageTicker" class="message-ticker">
+          <div id="messageTickerTrack" class="message-ticker-track"></div>
+        </div>
+
+        <section id="allMessagesPanel" class="all-messages-panel" hidden>
+          <div class="all-messages-toolbar">
+            <div>
+              <strong>全部留言</strong>
+              <span id="allMessageCount"></span>
+            </div>
+            <div class="board-sort">
+              <button class="filter-btn active" data-board-sort="newest">最新</button>
+              <button class="filter-btn" data-board-sort="liked">最多点赞</button>
+              <button id="closeAllMessagesBtn" class="mini-btn">收起</button>
+            </div>
+          </div>
+          <div id="messageWall" class="message-wall"></div>
+        </section>
+      </div>
+      <div class="ending-actions-row">
+        <button id="endingShareBtn" class="ghost-btn">分享我的医学人生</button>
+        <button id="endingRestartBtn" class="primary-btn">重新开启一局</button>
+      </div>
+    </section>
+
+    <div id="endingBlessingOverlay" class="ending-blessing-overlay" hidden>
+      <div class="ending-blessing-modal" role="dialog" aria-modal="true" aria-labelledby="endingBlessingTitle">
+        <div class="blessing-symbol" aria-hidden="true">✦</div>
+        <div class="eyebrow">A NOTE FOR YOUR JOURNEY</div>
+        <h2 id="endingBlessingTitle">这一段路，走到这里了</h2>
+        <p id="endingBlessingText"></p>
+        <div class="blessing-actions">
+          <button id="blessingMessageBtn" class="primary-btn">留一句给后来的人</button>
+          <button id="blessingCloseBtn" class="ghost-btn">看看我的结局</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="admissionOverlay" class="admission-overlay" hidden>
+      <div class="admission-modal" role="dialog" aria-modal="true" aria-labelledby="admissionModalTitle">
+        <div id="admissionSearching" class="admission-searching">
+          <div class="admission-spinner" aria-hidden="true"></div>
+          <div class="eyebrow">ADMISSION RESULT</div>
+          <h2 id="admissionModalTitle">查询录取结果中</h2>
+          <p id="admissionQuerySchool">正在连接招生系统…</p>
+          <div class="admission-countdown"><span id="admissionCountdown">3</span><small>秒</small></div>
+          <div class="query-progress"><i id="admissionQueryBar"></i></div>
+        </div>
+        <div id="admissionResult" class="admission-result" hidden>
+          <div id="admissionResultIcon" class="admission-result-icon">✓</div>
+          <div class="eyebrow">OFFICIAL RESULT · GAME</div>
+          <h2 id="admissionResultTitle">恭喜录取</h2>
+          <p id="admissionResultText"></p>
+          <div id="admissionResultMeta" class="admission-result-meta"></div>
+          <button id="admissionResultBtn" class="primary-btn">确认结果</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="supplyOverlay" class="reward-overlay" hidden>
+      <div class="reward-modal" role="dialog" aria-modal="true" aria-labelledby="supplyTitle">
+        <div class="reward-icon">🎒</div>
+        <div class="eyebrow">OPTIONAL REWARD</div>
+        <h2 id="supplyTitle">人生补给</h2>
+        <p>广告只提供资源型道具，不改变考研、申博或医院求职的录取/录用结果。</p>
+        <div id="supplyOptions" class="supply-options"></div>
+        <button id="closeSupplyBtn" class="ghost-btn reward-close">暂时不用</button>
+      </div>
+    </div>
+
+    <div id="crisisOverlay" class="reward-overlay" hidden>
+      <div class="reward-modal crisis-modal" role="dialog" aria-modal="true" aria-labelledby="crisisTitle">
+        <div id="crisisIcon" class="reward-icon">⚠️</div>
+        <div class="eyebrow">STATUS WARNING</div>
+        <h2 id="crisisTitle">状态告急</h2>
+        <p id="crisisText"></p>
+        <div class="crisis-actions">
+          <button id="crisisUseBtn" class="primary-btn">使用恢复卡</button>
+          <button id="crisisAdBtn" class="ghost-btn">获取恢复卡</button>
+          <button id="crisisContinueBtn" class="ghost-btn">我知道了，继续</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <span>Prototype · Honghu2527/game_doctor · v0.11.4</span>
+      <span>院校与分数为游戏化设定，不构成高考志愿或职业建议。</span>
+    </footer>
+  </main>
+
+  
