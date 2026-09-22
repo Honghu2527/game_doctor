@@ -36,8 +36,14 @@ window.SCHOOL_DATA = {
     {id:"hebmu",name:"河北医科大学",city:"石家庄",minScore:610,level:3,pressure:1.03,cost:2,research:3,clinical:4,mods:{knowledge:5,research:3,reputation:3,money:1},traits:["临床基础扎实","区域资源稳定","成本较低"],flavor:"日子朴素，但医学知识一点都不会少背。"},
     {id:"gxmu",name:"广西医科大学",city:"南宁",minScore:604,level:3,pressure:1.02,cost:2,research:3,clinical:4,mods:{knowledge:5,research:3,reputation:3,money:1,mental:1},traits:["区域临床资源强","发展空间稳定","生活压力较低"],flavor:"不在最卷的城市，也并不代表医学会轻松。"},
     {id:"kmmu",name:"昆明医科大学",city:"昆明",minScore:596,level:3,pressure:1.01,cost:2,research:3,clinical:4,mods:{knowledge:4,research:3,reputation:2,mental:2},traits:["区域医疗需求大","生活节奏相对舒缓","临床机会稳定"],flavor:"天气很好，但期末周不会因为天气好就取消。"},
+    {id:"xzhmu",name:"徐州医科大学",city:"徐州",minScore:600,level:3,pressure:1.03,cost:2,research:3,clinical:4,mods:{knowledge:5,research:3,reputation:3,money:1},traits:["临床导向明确","区域资源稳定","专业训练扎实"],flavor:"平台够用，后面的差距要靠你自己拉开。"},
     {id:"sxmu",name:"山西医科大学",city:"太原",minScore:586,level:3,pressure:1.01,cost:2,research:3,clinical:3,mods:{knowledge:4,research:2,reputation:2,money:1},traits:["培养体系稳定","成本较低","需要主动争取机会"],flavor:"你的上限越来越取决于后面的选择。"},
+    {id:"zymu",name:"遵义医科大学",city:"遵义",minScore:580,level:2,pressure:1.00,cost:1,research:2,clinical:3,mods:{knowledge:4,research:2,reputation:2,money:2,mental:1},traits:["临床训练务实","生活成本低","升学改变路径"],flavor:"不是最耀眼的开局，但足够让你把临床基本功练起来。"},
     {id:"swmu",name:"西南医科大学",city:"泸州",minScore:572,level:2,pressure:1.00,cost:1,research:2,clinical:3,mods:{knowledge:4,research:2,reputation:2,money:2,mental:1},traits:["临床导向明确","生活成本低","后续升学很关键"],flavor:"从这里开始，努力的权重会越来越大。"},
+    {id:"nxmu",name:"宁夏医科大学",city:"银川",minScore:566,level:2,pressure:.99,cost:1,research:2,clinical:3,mods:{knowledge:4,research:2,reputation:2,money:2,mental:2},traits:["区域医疗需求高","生活成本较低","机会靠主动争取"],flavor:"学校只是地图的一部分，真正的路线还在后面。"},
+    {id:"gannan",name:"赣南医科大学",city:"赣州",minScore:558,level:2,pressure:.99,cost:1,research:2,clinical:3,mods:{knowledge:4,research:1,reputation:2,money:2,mental:2},traits:["临床路径完整","成本较低","考研节点关键"],flavor:"你需要比别人更早思考下一次跃迁。"},
+    {id:"xinxiang",name:"新乡医学院",city:"新乡",minScore:550,level:2,pressure:.98,cost:1,research:2,clinical:3,mods:{knowledge:4,research:1,reputation:2,money:3,mental:2},traits:["医学培养稳定","生活成本低","升学影响明显"],flavor:"这里的开局更朴素，也更考验长期积累。"},
+    {id:"bengbu",name:"蚌埠医科大学",city:"蚌埠",minScore:545,level:2,pressure:.98,cost:1,research:2,clinical:3,mods:{knowledge:3,research:1,reputation:2,money:3,mental:2},traits:["临床训练务实","生活压力较低","后续选择重要"],flavor:"你没有太多光环，但有足够长的时间改变结局。"},
     {id:"regional_med",name:"地方医学院（游戏虚拟校）",city:"家乡省会",minScore:530,level:2,pressure:0.98,cost:1,research:2,clinical:3,mods:{knowledge:3,research:1,reputation:1,money:3,mental:2},traits:["生活成本较低","资源需要主动争取","升学改变路径"],flavor:"没有耀眼校名加持，你需要用后面的十几年证明自己。"}
   ]
 };
