@@ -9,37 +9,89 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="ambient ambient-a"></div>
-  <div class="ambient ambient-b"></div>
-
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
   <main class="app-shell">
     <header class="topbar">
       <div>
         <div class="eyebrow">MED STUDENT LIFE SIMULATOR</div>
         <h1>医学生养成记录</h1>
-        <p class="subtitle">从录取通知书到白大褂，从规培夜班到主任、专家与院士。每个选择都会留下痕迹。</p>
+        <p class="subtitle">从高考抽分、报考医学院，到规培、主治、副高、主任、专家与院士。每个选择都会留下痕迹。</p>
       </div>
-      <button id="restartBtn" class="ghost-btn" hidden>重新开始</button>
+      <div class="top-actions">
+        <button id="continueBtn" class="ghost-btn" hidden>继续上次人生</button>
+        <button id="restartBtn" class="ghost-btn" hidden>重新开始</button>
+      </div>
     </header>
 
     <section id="startScreen" class="panel start-panel">
-      <div class="hero-badge">中国医学生人生模拟器 · MVP 0.1</div>
-      <h2>欢迎来到医学这条超长赛道。</h2>
-      <p class="intro">你将面对考试、科研、规培、收入、职称、医患沟通、家庭和一点点运气。这里没有绝对正确的答案，只有不同的代价。</p>
-
+      <div class="hero-badge">中国医学生人生模拟器 · v0.2</div>
+      <h2>先从高考那一秒开始。</h2>
+      <p class="intro">你会亲手“停下”自己的高考分数，再在游戏化报考区间里选择医学院校。学校会影响后续培养压力、科研竞争、生活成本和初始属性。</p>
       <div class="form-row">
         <label for="playerName">角色姓名</label>
         <input id="playerName" maxlength="12" value="小张" autocomplete="off">
       </div>
-
-      <div class="section-label">选择游戏难度</div>
+      <div class="section-label">人生难度</div>
       <div id="difficultyGrid" class="difficulty-grid"></div>
+      <div class="start-note">学校难度与人生难度会叠加。地狱模式 + 高压院校，会明显提高体力与心理消耗。</div>
+      <button id="startBtn" class="primary-btn">进入高考放榜日</button>
+    </section>
 
-      <div class="start-note">提示：地狱模式会放大负面消耗。体力或心理归零时，会提前触发离开临床结局。</div>
-      <button id="startBtn" class="primary-btn">领取录取通知书</button>
+    <section id="gaokaoScreen" class="panel gaokao-panel" hidden>
+      <div class="hero-badge">第一关 · 高考放榜</div>
+      <h2>750 分，总有一个数字会停在你面前。</h2>
+      <p class="intro">点击“开始滚动”，分数会快速变化；当你觉得就是现在，点击“停止”。每局只能正式停一次。</p>
+      <div class="score-machine">
+        <div class="score-label">高考总分</div>
+        <div id="scoreDisplay" class="score-display">---</div>
+        <div class="score-total">/ 750</div>
+      </div>
+      <div class="score-actions">
+        <button id="rollBtn" class="primary-btn">开始滚动</button>
+        <button id="stopBtn" class="danger-btn" disabled>停止！</button>
+      </div>
+      <div id="scoreResult" class="score-result" hidden></div>
+    </section>
+
+    <section id="schoolScreen" class="panel school-panel" hidden>
+      <div class="panel-title-row">
+        <div>
+          <div class="eyebrow">VOLUNTEER APPLICATION</div>
+          <h2>选择你的医学院校</h2>
+        </div>
+        <div class="score-pill"><span>高考</span><strong id="schoolScore">0</strong></div>
+      </div>
+      <div id="bandCard" class="band-card"></div>
+      <p class="school-disclaimer">以下分数仅用于游戏难度分层，不代表真实录取线。真实高考录取取决于省份、年份、位次、选科与专业组。</p>
+      <div id="schoolGrid" class="school-grid"></div>
+    </section>
+
+    <section id="letterScreen" class="panel letter-panel" hidden>
+      <div class="admission-letter">
+        <div class="letter-corner">GAME SIMULATION</div>
+        <div class="letter-school" id="letterSchool"></div>
+        <div class="letter-title">录 取 通 知 书</div>
+        <div class="letter-body">
+          <p><strong id="letterName"></strong> 同学：</p>
+          <p>祝贺你在本轮人生模拟中被 <strong id="letterSchoolInline"></strong> <strong>临床医学专业</strong>录取。</p>
+          <p>你的高考成绩为 <strong id="letterScore"></strong> 分。愿你从今天起，真正开始理解“医学”这两个字的重量。</p>
+        </div>
+        <div class="letter-meta">
+          <span>专业：临床医学</span><span>学制：游戏模拟</span>
+        </div>
+        <div class="fake-seal">录取</div>
+      </div>
+      <div id="schoolEffectSummary" class="school-effect-summary"></div>
+      <button id="enterUniversityBtn" class="primary-btn">确认入学 · 开启医学人生</button>
     </section>
 
     <section id="gameScreen" hidden>
+      <section class="career-strip">
+        <div><span>学校</span><strong id="metaSchool">—</strong></div>
+        <div><span>高考</span><strong id="metaScore">—</strong></div>
+        <div><span>模式</span><strong id="metaDifficulty">—</strong></div>
+      </section>
+
       <section class="status-grid" aria-label="角色属性">
         <div class="status-card"><span>知识</span><strong id="statKnowledge">0</strong></div>
         <div class="status-card"><span>体力</span><strong id="statEnergy">0</strong></div>
@@ -52,6 +104,7 @@
       <section class="panel story-panel">
         <div class="timeline-row">
           <span id="stageChip" class="stage-chip"></span>
+          <span id="typeChip" class="type-chip"></span>
           <span id="yearText" class="year-text"></span>
         </div>
         <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
@@ -63,10 +116,7 @@
 
       <section class="panel log-panel">
         <div class="panel-title-row">
-          <div>
-            <div class="eyebrow">YOUR MEDICAL LIFE</div>
-            <h3>人生记录</h3>
-          </div>
+          <div><div class="eyebrow">YOUR MEDICAL LIFE</div><h3>人生记录</h3></div>
           <button id="toggleLogBtn" class="mini-btn">收起</button>
         </div>
         <div id="lifeLog" class="life-log"></div>
@@ -83,11 +133,12 @@
     </section>
 
     <footer>
-      <span>Prototype · Honghu2527/game_doctor</span>
-      <span>游戏内容为虚构化职业体验，不构成医学或就业建议。</span>
+      <span>Prototype · Honghu2527/game_doctor · v0.2</span>
+      <span>院校与分数为游戏化设定，不构成高考志愿或职业建议。</span>
     </footer>
   </main>
 
+  <script src="data/schools.js"></script>
   <script src="data/events.js"></script>
   <script src="app.js"></script>
 </body>
