@@ -79,3 +79,44 @@
 - 分享卡片与好友排行（可选）
 
 当前版本不采集账号信息，网页存档只保存在用户本地浏览器。
+
+
+## v0.5 留言墙迁移设计
+
+网页版当前留言墙只使用本地存储，不向任何服务器上传内容。
+
+微信小程序正式版建议增加 `MessageBoardAdapter`：
+- Web: localStorage
+- 小程序开发版: wx.setStorageSync / wx.getStorageSync
+- 正式共享版: 微信云开发数据库或自建后端 API
+
+建议云端字段：
+- message_id
+- anonymous_display_name
+- message_text
+- school_label
+- education_path
+- ending_label
+- created_at
+- moderation_status
+- like_count
+
+上线时必须加入：
+- 200 字长度限制
+- 敏感内容审核
+- 举报 / 隐藏
+- 频率限制
+- 默认匿名或自定义昵称，避免公开真实姓名
+- 隐私政策中明确留言属于公开用户生成内容
+
+## 教育层级
+
+当前游戏已同时支持：
+- 医学本科
+- 医学专科三年制游戏路线
+- 专升本
+- 硕士
+- 博士
+- 博后 / 临床职业路线
+
+政策、招生专业和职业资格在正式版中应独立做成可更新的数据源，不写死在剧情引擎中。
