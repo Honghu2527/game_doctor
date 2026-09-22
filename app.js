@@ -7,6 +7,7 @@
   var SCHOOL_SYSTEM=window.SCHOOL_SYSTEM;
   var CAREER_DATA=window.CAREER_DATA;
   var COLLEGE_DATA=window.COLLEGE_DATA;
+  var SPECIALTY_DATA=window.SPECIALTY_DATA;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var BOARD=window.MESSAGE_BOARD;
   var DIFFICULTIES=DATA.difficulties;
@@ -14,7 +15,7 @@
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
   var ORDER=CAREER_DATA.order.concat(COLLEGE_DATA?COLLEGE_DATA.order:[]);
-  var SAVE_KEY="doctor-life-sim-v06";
+  var SAVE_KEY="doctor-life-sim-v08";
   var BOARD_KEY="doctor-life-message-wall-v1";
 
   var state=null;
@@ -49,6 +50,7 @@
     ["startScreen","gaokaoScreen","schoolScreen","letterScreen","gameScreen","endingScreen"].forEach(function(x){
       el(x).hidden=x!==id;
     });
+    renderJourneyRibbon(id);
   }
 
   function schoolById(id){return SCHOOL_DATA.schools.find(function(s){return s.id===id;});}
@@ -56,6 +58,76 @@
   function profileForSchool(school){return SCHOOL_SYSTEM.profiles[profileIdForSchool(school)];}
   function currentSchool(){return state?schoolById(state.schoolId):null;}
   function currentProfile(){var s=currentSchool();return s?profileForSchool(s):SCHOOL_SYSTEM.profiles.growth;}
+  function currentSpecialty(){
+    return state&&state.specialtyId&&SPECIALTY_DATA?SPECIALTY_DATA.specialties[state.specialtyId]:null;
+  }
+  function currentSpecialtyName(){
+    var s=currentSpecialty();
+    return s?s.name:"尚未选择";
+  }
+
+  function journeyPhaseForState(){
+    if(!state)return {current:"出生档案",next:"高考放榜",steps:[["出生","current"],["高考","future"],["志愿录取","future"]]};
+    if(state.finished)return {current:"人生结局",next:"留言与回顾",steps:[["医学院","done"],["升学/规培","done"],["职业","done"],["结局","current"]]};
+
+    var scene=state.scene||"";
+    var school=currentSchool();
+    var college=school&&school.educationLevel==="专科";
+    var baseLabel=college?"医学专科":"本科医学";
+
+    if(/^fresh_|white_coat|key_undergrad|ug_|clinical_exposure/.test(scene)){
+      return {current:baseLabel+"培养",next:"毕业分流：升学 / 规培 / 海外",steps:[["出生","done"],["高考","done"],["医学院","done"],[baseLabel,"current"],["毕业分流","future"]]};
+    }
+    if(/^college_/.test(scene)){
+      var collegeNext=/upgrade/.test(scene)?"本科衔接 / 实践就业":"专升本 / 基层实践";
+      return {current:"医学专科路线",next:collegeNext,steps:[["出生","done"],["高考","done"],["医学专科","current"],["升学/实践","future"]]};
+    }
+    if(/key_graduation|grad_exam|exam_fail|recommended_postgrad|specialty_select/.test(scene)){
+      return {current:"升学与科室分流",next:"专硕并轨 / 学硕科研 / 直博 / 直接规培",steps:[["本科","done"],["毕业","done"],["升学分流","current"],["科室选择","future"]]};
+    }
+    if(state.flags.has("clinicalMaster")&&!/^phd_|direct_phd/.test(scene)&&!/job_choice|young_attending|career_|key_midcareer|promotion|director|final/.test(scene)){
+      return {current:"临床专硕 · "+currentSpecialtyName()+" · 并轨规培",next:"毕业求职 / 继续读博",steps:[["医学院","done"],["择科","done"],["专硕+规培","current"],["就业/读博","future"]]};
+    }
+    if(state.flags.has("academicMaster")&&!/^phd_|direct_phd/.test(scene)&&!/resident_|job_choice|young_attending|career_|key_midcareer|promotion|director|final/.test(scene)){
+      return {current:"学硕 · "+currentSpecialtyName()+" · 科研训练",next:"继续读博 / 毕业后规培",steps:[["医学院","done"],["择科","done"],["学硕科研","current"],["读博/规培","future"]]};
+    }
+    if(/^phd_|direct_phd/.test(scene)||state.flags.has("phdDomestic")||state.flags.has("phdOverseas")||state.flags.has("directPhdOffer")){
+      if(!/resident_|job_choice|young_attending|career_|key_midcareer|promotion|director|final/.test(scene)){
+        return {current:"博士阶段 · "+currentSpecialtyName(),next:"医院 / 博后 / 海外",steps:[["研究生/直博","done"],["学科方向","done"],["博士","current"],["毕业去向","future"]]};
+      }
+    }
+    if(/^resident_/.test(scene)||state.flags.has("directResident")){
+      if(!/job_choice|young_attending|career_|key_midcareer|promotion|director|final/.test(scene)){
+        return {current:"规培 · "+currentSpecialtyName(),next:"结业 / 医院选择",steps:[["医学院","done"],["择科","done"],["规培","current"],["正式工作","future"]]};
+      }
+    }
+    if(/job_choice|young_attending|career_|key_midcareer|promotion|director/.test(scene)){
+      return {current:"职业发展 · "+currentSpecialtyName(),next:"晋升 / 专家 / 管理 / 学术",steps:[["培养","done"],["规培/学历","done"],["职业发展","current"],["职业终章","future"]]};
+    }
+    return {current:"医学人生进行中",next:"由当前选择决定",steps:[["出生","done"],["高考","done"],["医学院","done"],["当前路线","current"]]};
+  }
+
+  function renderJourneyRibbon(screenId){
+    if(!el("journeySteps"))return;
+    var model;
+    if(screenId==="startScreen"){
+      model={current:"出生档案",next:"高考放榜",steps:[["出生","current"],["高考","future"],["志愿录取","future"]]};
+    }else if(screenId==="gaokaoScreen"){
+      model={current:"高考放榜",next:"根据分数开放本科 / 专科院校池",steps:[["出生","done"],["高考","current"],["志愿录取","future"]]};
+    }else if(screenId==="schoolScreen"||screenId==="letterScreen"){
+      model={current:screenId==="schoolScreen"?"志愿填报":"录取确认",next:"进入对应院校培养路线",steps:[["出生","done"],["高考","done"],["志愿录取","current"],["医学院","future"]]};
+    }else if(screenId==="endingScreen"){
+      model={current:"人生结局",next:"留言、回顾或重新开始",steps:[["培养","done"],["升学/规培","done"],["职业","done"],["结局","current"]]};
+    }else{
+      model=journeyPhaseForState();
+    }
+    el("journeyCurrent").textContent=model.current;
+    el("journeyNext").textContent="下一阶段："+model.next;
+    el("journeySteps").innerHTML=model.steps.map(function(item,index){
+      var cls=item[1]==="done"?"done":item[1]==="current"?"current":"future";
+      return "<div class=\"journey-step "+cls+"\"><b>"+String(index+1).padStart(2,"0")+"</b><span>"+escapeHtml(item[0])+"</span></div>";
+    }).join("");
+  }
 
   function fillSelect(id,obj,defaultKey){
     var select=el(id);
@@ -374,6 +446,8 @@
       pendingNext:(school.educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[profileId]||"fresh_growth"),
       visitedSide:new Set(),
       applications:{},
+      specialtyId:null,
+      specialtyReturnNext:null,
       route:(school.educationLevel==="专科"?"专科·未分流":"本科·未分流"),
       signaturePending:false,
       log:[],
@@ -500,6 +574,12 @@
     return true;
   }
 
+  function choiceVisible(choice){
+    if(choice.showIfFlags&&!choice.showIfFlags.every(function(f){return state.flags.has(f);})){return false;}
+    if(choice.hideIfFlags&&choice.hideIfFlags.some(function(f){return state.flags.has(f);})){return false;}
+    return true;
+  }
+
   function requirementText(req){
     if(!req)return "";
     var parts=[];
@@ -610,6 +690,29 @@
     };
   }
 
+  function specialtySelectionEvent(){
+    if(!state||!SPECIALTY_DATA||state.scene.indexOf("specialty_select_")!==0)return null;
+    var modeId=state.scene.replace("specialty_select_","");
+    var mode=SPECIALTY_DATA.selectionModes[modeId];
+    if(!mode)return null;
+    return {
+      stage:mode.stage,year:mode.year,title:mode.title,type:"specialtySelect",critical:true,warning:mode.warning,
+      text:"这不是装饰性选择。不同科室会改变夜班、操作、科研、生活节奏和后续专属事件。",
+      choices:Object.keys(SPECIALTY_DATA.specialties).map(function(id){
+        var s=SPECIALTY_DATA.specialties[id];
+        return {
+          text:s.icon+" "+s.name,
+          sub:s.desc,
+          specialtyId:id,
+          specialtyMode:modeId,
+          next:mode.next,
+          specialtyMetrics:s.metrics,
+          route:mode.routePrefix+"·"+s.name+(modeId==="clinical_master"?"（并轨规培）":"")
+        };
+      })
+    };
+  }
+
   function activeOpportunityEvent(){
     if(!state||!state.activeOpportunity||!OPPORTUNITY_DATA)return null;
     var flow=OPPORTUNITY_DATA.flows[state.activeOpportunity.id];
@@ -621,10 +724,13 @@
     var merged={};
     Object.keys(CAREER_EVENTS).forEach(function(k){merged[k]=CAREER_EVENTS[k];});
     if(COLLEGE_DATA)Object.keys(COLLEGE_DATA.events).forEach(function(k){merged[k]=COLLEGE_DATA.events[k];});
+    if(SPECIALTY_DATA)Object.keys(SPECIALTY_DATA.events).forEach(function(k){merged[k]=SPECIALTY_DATA.events[k];});
     Object.keys(SIDE_EVENTS).forEach(function(k){merged[k]=SIDE_EVENTS[k];});
     Object.keys(ECO_EVENTS).forEach(function(k){merged[k]=ECO_EVENTS[k];});
     var sig=signatureEventForSchool();
     if(sig)merged.__SIGNATURE__=sig;
+    var specialtySelect=specialtySelectionEvent();
+    if(specialtySelect)merged[state.scene]=specialtySelect;
     var opp=activeOpportunityEvent();
     if(opp)merged.__OPPORTUNITY_FLOW__=opp;
     return merged;
@@ -649,7 +755,22 @@
       return true;
     }
 
-    if(current.type==="key"||current.type==="opportunity")return false;
+    if(current.type==="key"||current.type==="opportunity"||current.type==="specialtySelect")return false;
+
+    if(SPECIALTY_DATA&&state.specialtyId&&current.type!=="specialty"&&/研究生|博士|规培|住院|主治|职业|高级职称|临床专硕|学硕/.test(current.stage||"")){
+      var spec=SPECIALTY_DATA.specialties[state.specialtyId];
+      var specPool=(spec&&spec.pool||[]).filter(function(id){
+        return SPECIALTY_DATA.events[id]&&!state.visitedSide.has(id);
+      });
+      if(specPool.length&&Math.random()<.34){
+        var specId=specPool[Math.floor(Math.random()*specPool.length)];
+        state.pendingNext=next;
+        state.scene=specId;
+        state.visitedSide.add(specId);
+        addLog("科室专属","进入 "+spec.name+" 后触发《"+SPECIALTY_DATA.events[specId].title+"》。");
+        return true;
+      }
+    }
 
     var profile=currentProfile();
     var ecoPool=(profile.eventPool||[]).filter(function(id){return ECO_EVENTS[id]&&!state.visitedSide.has(id);});
@@ -678,6 +799,22 @@
     applyTalentEffects(choice.talentEffects);
     (choice.flags||[]).forEach(function(f){state.flags.add(f);});
     if(choice.route)state.route=choice.route;
+
+    if(choice.specialtyId&&SPECIALTY_DATA){
+      var selectedSpec=SPECIALTY_DATA.specialties[choice.specialtyId];
+      if(selectedSpec){
+        state.specialtyId=choice.specialtyId;
+        state.specialtyReturnNext=choice.next;
+        state.flags.add("specialty_"+choice.specialtyId);
+        applyEffects(selectedSpec.mods||{});
+        applyTalentEffects(selectedSpec.talentEffects||{});
+        addLog("科室分流","你选择了「"+selectedSpec.name+"」。从现在起，后续事件池会按科室变化。");
+        state.scene=selectedSpec.intro;
+        saveState();render();
+        window.scrollTo({top:0,behavior:"smooth"});
+        return;
+      }
+    }
 
     if(current.exclusiveGroup&&choice.application){
       state.applications=state.applications||{};
@@ -737,7 +874,14 @@
 
     if(next==="__END__"){showEnding();return;}
 
-    if(next==="__RETURN__"){
+    if(next==="resident_entry"&&state.flags.has("clinicalMaster")&&state.flags.has("integratedResidency")){
+      next="clinical_master_finish";
+    }
+
+    if(next==="__SPECIALTY_RETURN__"){
+      state.scene=state.specialtyReturnNext||"resident_entry";
+      state.specialtyReturnNext=null;
+    }else if(next==="__RETURN__"){
       state.scene=state.pendingNext||((currentSchool()&&currentSchool().educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth"));
       state.pendingNext=null;
     }else if(!maybeEnterDetour(current,next)){
@@ -786,7 +930,9 @@
     el("metaDifficulty").textContent=DIFFICULTIES[state.difficulty].name;
     el("metaProfile").textContent=profile.name;
     el("metaRoute").textContent=state.route||"本科·未分流";
+    el("metaSpecialty").textContent=currentSpecialtyName();
     el("metaBackground").textContent=backgroundShort(state.background);
+    renderJourneyRibbon("gameScreen");
 
     el("stageChip").textContent=e.stage;
     el("yearText").textContent=e.year;
@@ -794,9 +940,9 @@
     el("sceneText").textContent=e.text;
     el("progressBar").style.width=sceneProgress()+"%";
 
-    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":"主线";
+    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":e.type==="specialtySelect"?"科室分流":e.type==="specialty"?"科室专属":"主线";
     el("typeChip").textContent=typeName;
-    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":"");
+    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":e.type==="specialtySelect"?" specialty-select":e.type==="specialty"?" specialty":"");
 
     var panel=document.querySelector(".story-panel");
     panel.classList.toggle("key-scene",!!e.critical);
@@ -820,20 +966,26 @@
     else if(e.type==="opportunity")el("effectHint").textContent="先选择申请哪一个机会；选定后会进入多步骤申请流程，不会立刻出结果。";
     else if(e.type==="application")el("effectHint").textContent="你的项目选择、推荐信、材料准备和面试策略会改变后面的成功率与结果。";
     else if(e.type==="resultSuccess"||e.type==="resultFail")el("effectHint").textContent="结果已经确定，但你对成功或失败的后续处理仍然会改变人生路线。";
+    else if(e.type==="specialtySelect")el("effectHint").textContent="择科是长期分流：不同科室拥有不同的夜班强度、操作要求、科研机会和专属剧情。";
+    else if(e.type==="specialty")el("effectHint").textContent="这是 "+currentSpecialtyName()+" 的专属事件；换一个科室，后续问题会完全不同。";
     else if(["side","random"].indexOf(e.type)>=0)el("effectHint").textContent="完成支线后会回到原来的主线，但留下的属性和隐藏经历会继续影响后面。";
     else el("effectHint").textContent="不同学校、早期路线和过去的关键选择，会让后面的可选项逐渐不同。";
 
     var box=el("choices");
     box.innerHTML="";
-    e.choices.forEach(function(c){
+    e.choices.filter(choiceVisible).forEach(function(c){
       var ok=requirementsMet(c.requires);
       var b=document.createElement("button");
-      b.className="choice-btn";
+      b.className="choice-btn"+(c.specialtyId?" specialty-choice":"");
       b.disabled=!ok;
       var sub=ok?c.sub:"条件不足："+requirementText(c.requires);
       var meta="";
       if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
       if(c.application)meta+="<span class=\"choice-meta\">只能申请一个 · "+escapeHtml(c.application)+"</span>";
+      if(c.specialtyMetrics){
+        var sm=c.specialtyMetrics;
+        meta+="<span class=\"specialty-metrics\"><em>压力 "+stars(sm.pressure)+"</em><em>夜班 "+stars(sm.night)+"</em><em>科研 "+stars(sm.research)+"</em><em>操作 "+stars(sm.procedure)+"</em><em>生活 "+stars(sm.lifestyle)+"</em></span>";
+      }
       b.innerHTML="<b>"+escapeHtml(c.text)+"</b><small>"+escapeHtml(sub)+"</small>"+meta;
       b.addEventListener("click",function(){choose(c);});
       box.appendChild(b);
@@ -850,6 +1002,7 @@
 
   function evaluateEnding(){
     var s=state.stats,school=currentSchool(),prefix=school?"从 "+school.name+" 出发，":"";
+    if(currentSpecialty())prefix+="你最终选择了"+currentSpecialtyName()+"；";
     if(state.flags.has("phdOverseas")||state.flags.has("phdDomestic")||state.flags.has("directPhdOffer"))prefix+="你完成了博士阶段；";
     else if(state.flags.has("clinicalMaster")||state.flags.has("academicMaster"))prefix+="你完成了硕士阶段；";
     else if(state.flags.has("noMaster"))prefix+="你选择本科后更早进入临床；";
@@ -908,6 +1061,7 @@
       ["起点",school?school.name:"—"],
       ["学历层级",highestEducationLabel()],
       ["主要路线",state.route||"—"],
+      ["科室 / 学科",currentSpecialtyName()],
       ["关键机会",wins.length?wins.join("、"):"本轮没有拿到稀缺机会，但人生仍继续"],
       ["培养生态",currentProfile().name],
       ["高考",String(state.score||"—")+" 分"]
@@ -1090,6 +1244,8 @@
     state.profileId=raw.profileId||profileIdForSchool(schoolById(raw.schoolId));
     state.applications=raw.applications||{};
     state.activeOpportunity=raw.activeOpportunity||null;
+    state.specialtyId=raw.specialtyId||null;
+    state.specialtyReturnNext=raw.specialtyReturnNext||null;
     state.route=raw.route||"本科·未分流";
     state.background=raw.background||null;
     state.signaturePending=!!raw.signaturePending;
