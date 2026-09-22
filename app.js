@@ -212,7 +212,7 @@
     if(scene==="job_hospital_select"){
       var city=cityById(state.jobApplication&&state.jobApplication.cityId);
       if(!city){state.scene="job_city_select";return jobMarketEvent();}
-      var jobs=JOB_DATA.hospitalTemplates.filter(function(h){return city.tier>=h.minCityTier;});
+      var jobs=JOB_DATA.hospitalTemplates.filter(function(h){return city.tier>=h.minCityTier&&city.tier<=(h.maxCityTier||5);});
       return {
         stage:"求职 2/5 · 选择医院",year:"毕业 / 规培结业后",title:"在 "+city.name+"，你准备把简历投向哪里？",type:"jobMarket",
         text:JOB_DATA.disclaimer,
