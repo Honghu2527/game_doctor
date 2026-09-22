@@ -86,7 +86,7 @@
           return;
         }
       }
-      scrollAfterRender();
+      window.scrollTo({top:0,behavior:"smooth"});
     });
   }
 
@@ -838,7 +838,8 @@
         text:"录取不是一个按钮。你还需要选择学校、专业/科室，完成准备与复试，然后等待最终结果。",
         choices:[
           {text:"临床医学专业型硕士",sub:"研究生培养与规培并轨，临床训练和毕业要求同时推进。",eduStart:{level:"master",source:source},eduMasterType:"clinical_master",effects:{knowledge:2},next:"edu_master_school"},
-          {text:"学术型硕士",sub:"科研训练优先，不自动完成规培；以后回临床需要再衔接规培。",eduStart:{level:"master",source:source},eduMasterType:"academic_master",effects:{research:2},next:"edu_master_school"}
+          {text:"学术型硕士",sub:"科研训练优先，不自动完成规培；以后回临床需要再衔接规培。",eduStart:{level:"master",source:source},eduMasterType:"academic_master",effects:{research:2},next:"edu_master_school"},
+          {text:"直博 / 长学制科研申请",sub:"仅在推免路线开放；仍然要选博士院校、学科、研究方向、准备材料和面试。",showIfFlags:["recommendApplicant"],requires:{stats:{research:35}},flags:["directPhdCandidate"],effects:{research:3,energy:-2},next:"edu_phd_direct_school"}
         ]
       };
     }
