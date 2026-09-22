@@ -13,6 +13,7 @@
   var JOB_DATA=window.JOB_DATA;
   var ITEM_DATA=window.ITEM_DATA;
   var AD_SERVICE=window.AD_SERVICE;
+  var SHARE_SERVICE=window.SHARE_SERVICE;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var BOARD=window.MESSAGE_BOARD;
   var DIFFICULTIES=DATA.difficulties;
@@ -864,6 +865,10 @@
       crisisWarned:{energy:false,mental:false},
       crisisWarningVersion:2,
       adRewardsClaimed:0,
+      reviveCount:0,
+      freeReviveUsed:false,
+      adReviveUsed:false,
+      shareNudgeVisible:false,
       hintScene:null,
       specialtyId:null,
       specialtyReturnNext:null,
@@ -2090,25 +2095,128 @@
     scrollAfterRender();
   }
 
+  function reviveStatus(){
+    return {
+      count:state&&state.reviveCount||0,
+      freeUsed:!!(state&&state.freeReviveUsed),
+      adUsed:!!(state&&state.adReviveUsed)
+    };
+  }
+
+  function renderReviveShareBanner(){
+    if(!el("reviveShareBanner")||!state)return;
+    var show=!!state.shareNudgeVisible&&!state.finished;
+    el("reviveShareBanner").hidden=!show;
+    if(show){
+      el("reviveShareText").textContent="本局已经复活 "+(state.reviveCount||0)+" / 2 次。分享这一局不会增加复活次数，也不会改变任何游戏奖励。";
+    }
+  }
+
+  function performRevive(method){
+    if(!pendingChoiceContinuation||!currentCrisisStat||!state)return false;
+    var rs=reviveStatus();
+    if(rs.count>=2)return false;
+    if(method==="free"&&rs.freeUsed)return false;
+    if(method==="ad"&&rs.adUsed)return false;
+
+    if(method==="free")state.freeReviveUsed=true;
+    if(method==="ad")state.adReviveUsed=true;
+    state.reviveCount=(state.reviveCount||0)+1;
+
+    var stat=currentCrisisStat;
+    state.stats[stat]=Math.max(Number(state.stats[stat]||0),25);
+    if(state.stats.energy<=0)state.stats.energy=18;
+    if(state.stats.mental<=0)state.stats.mental=18;
+    state.crisisWarned=state.crisisWarned||{energy:false,mental:false};
+    state.crisisWarned.energy=false;
+    state.crisisWarned.mental=false;
+    state.shareNudgeVisible=true;
+
+    addLog("人生复活",(method==="free"?"使用本局唯一一次免费复活":"完整观看激励视频后复活")+"。本局已复活 "+state.reviveCount+" / 2 次。");
+    closeCrisis();
+    saveState();
+    resumePendingChoice();
+    return true;
+  }
+
+  function requestAdRevive(button){
+    if(rewardBusy||!AD_SERVICE||!pendingChoiceContinuation)return;
+    if((state.reviveCount||0)>=2||state.adReviveUsed)return;
+    rewardBusy=true;
+    var oldText=button&&button.textContent;
+    if(button){button.disabled=true;button.textContent="正在加载激励视频…";}
+    AD_SERVICE.watchRewarded().then(function(res){
+      if(res&&res.completed){
+        performRevive("ad");
+      }else{
+        addLog("复活失败","激励视频未完整观看，本次不消耗广告复活机会。");
+      }
+    }).catch(function(){
+      addLog("复活失败","当前激励视频暂不可用，广告复活机会仍然保留。");
+    }).then(function(){
+      rewardBusy=false;
+      if(button&&!el("crisisOverlay").hidden){
+        button.disabled=false;
+        button.textContent=oldText||"看广告复活";
+      }
+      saveState();
+    });
+  }
+
+  function shareJourney(source){
+    if(!state||!SHARE_SERVICE)return;
+    var title=state.name+"的医学人生｜"+(state.finished?terminationStageLabel():((allEvents()[state.scene]||{}).stage||"医学人生进行中"));
+    var pub=publicationSummary();
+    var text=state.name+"这一局走到了「"+(state.finished?terminationStageLabel():((allEvents()[state.scene]||{}).stage||"当前阶段"))+"」，科研成果 SCI "+pub.total+" 篇。你也来试试自己的医学人生路线。";
+    SHARE_SERVICE.prepareWechatMenu();
+    SHARE_SERVICE.share({title:title,text:text}).then(function(res){
+      if(res&&res.ok){
+        addLog("分享","已打开分享/复制入口。分享不会增加复活次数，也不会改变游戏奖励。");
+        state.shareNudgeVisible=false;
+        saveState();
+        if(!state.finished)renderReviveShareBanner();
+      }else{
+        window.alert("当前浏览器暂不能直接唤起分享。正式微信小程序版会接入原生分享按钮。");
+      }
+    }).catch(function(){});
+  }
+
   function openFatalCrisis(choice,current,success){
     var stat=state.stats.energy<=0?"energy":"mental";
     currentCrisisStat=stat;
     pendingChoiceContinuation={choice:choice,current:current,success:success};
     var locked=isCompetitiveScene(state.scene,current);
-    var id=stat==="energy"?"energy_card":"mental_card";
-    var item=itemById(id);
+    var rs=reviveStatus();
 
     el("crisisIcon").textContent=stat==="energy"?"⚡":"🧠";
     el("crisisTitle").textContent=(stat==="energy"?"体力":"心理")+"已经耗尽";
-    el("crisisText").textContent=locked
-      ?("这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，广告和道具不会介入结果；如果继续确认，本局将在这里结束。")
-      :("这次选择让"+statNames[stat]+"降到了 0。本局原本会在这里结束。你可以使用恢复卡，或自愿获取一张恢复卡后继续；也可以接受当前结局。");
 
-    el("crisisUseBtn").hidden=locked;
-    el("crisisAdBtn").hidden=locked;
-    el("crisisUseBtn").disabled=itemCount(id)<=0;
-    el("crisisUseBtn").textContent=itemCount(id)>0?"使用"+item.name+"继续（现有 ×"+itemCount(id)+"）":"暂无"+item.name;
-    el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"获取")+" · "+item.name;
+    if(locked){
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，复活与广告不会介入这一竞争流程；如果确认，本局将在这里结束。";
+      el("crisisUseBtn").hidden=true;
+      el("crisisAdBtn").hidden=true;
+    }else if(rs.count>=2){
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。本局两次复活机会已经全部用完，现在只能接受这一条时间线的结局。";
+      el("crisisUseBtn").hidden=true;
+      el("crisisAdBtn").hidden=true;
+    }else if(!rs.freeUsed){
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你可以使用本局唯一一次免费复活，将状态拉回安全线后继续；本局最多复活 2 次。";
+      el("crisisUseBtn").hidden=false;
+      el("crisisUseBtn").disabled=false;
+      el("crisisUseBtn").textContent="免费复活 · 第 1 / 2 次";
+      el("crisisAdBtn").hidden=true;
+    }else if(!rs.adUsed){
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"再次降到了 0。免费复活已经使用；你还剩最后一次激励视频复活机会。";
+      el("crisisUseBtn").hidden=true;
+      el("crisisAdBtn").hidden=false;
+      el("crisisAdBtn").disabled=false;
+      el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"观看广告")+" · 最后一次复活";
+    }else{
+      el("crisisText").textContent="本局两次复活机会已经全部使用，现在只能接受当前结局。";
+      el("crisisUseBtn").hidden=true;
+      el("crisisAdBtn").hidden=true;
+    }
+
     el("crisisContinueBtn").textContent="接受当前结局";
     el("crisisOverlay").hidden=false;
     document.body.classList.add("modal-open");
@@ -2178,6 +2286,7 @@
     captureCheckpointIfEligible(e);
     renderInventory();
     renderDecisionHint(e);
+    renderReviveShareBanner();
 
     el("stageChip").textContent=e.stage;
     el("yearText").textContent=e.year;
@@ -2558,6 +2667,10 @@
     state.crisisWarned=raw.crisisWarningVersion===2?(raw.crisisWarned||{energy:false,mental:false}):{energy:false,mental:false};
     state.crisisWarningVersion=2;
     state.adRewardsClaimed=raw.adRewardsClaimed||0;
+    state.reviveCount=raw.reviveCount||0;
+    state.freeReviveUsed=!!raw.freeReviveUsed;
+    state.adReviveUsed=!!raw.adReviveUsed;
+    state.shareNudgeVisible=!!raw.shareNudgeVisible;
     state.hintScene=raw.hintScene||null;
     state.specialtyId=raw.specialtyId||null;
     state.specialtyReturnNext=raw.specialtyReturnNext||null;
@@ -2613,6 +2726,8 @@
   el("enterUniversityBtn").addEventListener("click",enterUniversity);
   el("restartBtn").addEventListener("click",reset);
   el("endingRestartBtn").addEventListener("click",reset);
+  el("endingShareBtn").addEventListener("click",function(){shareJourney("ending");});
+  el("reviveShareBtn").addEventListener("click",function(){shareJourney("revive");});
   el("continueBtn").addEventListener("click",function(){restoreState(Storage.load());});
   el("legacyMessage").addEventListener("input",function(){
     el("messageCount").textContent=this.value.length+" / 200";
@@ -2641,10 +2756,18 @@
   });
   el("crisisUseBtn").addEventListener("click",function(){
     if(!currentCrisisStat)return;
-    useItem(currentCrisisStat==="energy"?"energy_card":"mental_card",{closeCrisis:true,resumeFatal:!!pendingChoiceContinuation});
+    if(pendingChoiceContinuation){
+      performRevive("free");
+      return;
+    }
+    useItem(currentCrisisStat==="energy"?"energy_card":"mental_card",{closeCrisis:true});
   });
   el("crisisAdBtn").addEventListener("click",function(){
     if(!currentCrisisStat)return;
+    if(pendingChoiceContinuation){
+      requestAdRevive(this);
+      return;
+    }
     requestRewardItem(currentCrisisStat==="energy"?"energy_card":"mental_card",true,this);
   });
   el("crisisContinueBtn").addEventListener("click",function(){
