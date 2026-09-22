@@ -231,3 +231,26 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 .filter-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 #schoolResultCount{margin-left:auto;color:var(--muted);font-size:11px}
 .school-empty{grid-column:1/-1;border:1px dashed var(--line);border-radius:16px;padding:24px;text-align:center;color:var(--muted);background:#fffaf4}
+
+
+/* v0.6 birth profile + score-tier locking */
+.birth-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:10px 0 12px}
+.birth-field{display:grid;gap:6px}
+.birth-field span{font-size:12px;font-weight:800;color:#5e554c}
+.birth-field select{
+  width:100%;border:1px solid var(--line);border-radius:13px;background:#fff;padding:11px 12px;color:var(--ink);outline:none
+}
+.birth-field select:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px rgba(31,97,89,.08)}
+.birth-preview{border:1px solid #ded5c8;background:#fffaf2;border-radius:16px;padding:14px 15px;margin-top:10px;line-height:1.65;font-size:12px;color:#5d5b57}
+.birth-preview strong{color:var(--ink)}
+.birth-note{font-size:11px;line-height:1.6;color:#8b8175;margin:8px 0 18px}
+.score-eligibility{margin:12px auto 0;max-width:520px;border-radius:14px;padding:12px 14px;background:#eef4f1;color:#365d55;font-size:12px;line-height:1.6}
+.score-eligibility strong{font-size:14px}
+.filter-btn:disabled{opacity:.35;cursor:not-allowed}
+.filter-btn.locked{display:none}
+.career-strip{grid-template-columns:1.5fr .5fr .75fr 1fr 1fr 1.1fr}
+@media(max-width:760px){
+  .birth-grid{grid-template-columns:1fr}
+  .career-strip{grid-template-columns:1fr 1fr}
+  .career-strip>div:first-child{grid-column:1/-1}
+}
