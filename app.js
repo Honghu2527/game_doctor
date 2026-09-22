@@ -472,6 +472,7 @@
     el("letterName").textContent=state.name;
     el("letterScore").textContent=state.score;
     el("letterProgram").textContent="专业："+(school.program||"临床医学");
+    el("letterProgramInline").textContent=school.program||"临床医学";
     el("letterLevel").textContent="层次："+(school.educationLevel||"本科");
     el("letterDuration").textContent="学制："+(school.duration||"游戏模拟");
     el("birthSummaryCard").innerHTML=
@@ -508,13 +509,21 @@
     return s?s.pressure*p.negativeScale:1;
   }
 
+  function specialtyPressure(){
+    var s=currentSpecialty();
+    if(!s||!s.metrics)return 1;
+    var stage=(allEvents()[state.scene]&&allEvents()[state.scene].stage)||"";
+    if(!/研究生|临床|规培|住院|博士|职业|高级职称|主治|科室/.test(stage))return 1;
+    return 0.96+(s.metrics.pressure||3)*0.018+(s.metrics.night||3)*0.010;
+  }
+
   function clampStats(){
     statKeys.forEach(function(k){state.stats[k]=clamp(Math.round(state.stats[k]),0,100);});
   }
 
   function applyEffects(effects){
     effects=effects||{};
-    var scale=DIFFICULTIES[state.difficulty].negativeScale*schoolPressure();
+    var scale=DIFFICULTIES[state.difficulty].negativeScale*schoolPressure()*specialtyPressure();
     Object.keys(effects).forEach(function(k){
       if(statKeys.indexOf(k)<0)return;
       var v=effects[k],delta=v<0?v*scale:v;
