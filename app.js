@@ -1742,6 +1742,29 @@
     if(BOARD&&el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
     renderWall();
     saveState();scrollAfterRender();
+    window.setTimeout(function(){showEndingBlessing(type,ending);},380);
+  }
+
+  function showEndingBlessing(type,ending){
+    var messages=type==="burnout"
+      ?[
+        "虽然这条道路比想象中更曲折，但你还是走到了这里。人生从来不只有一种答案，愿你以后每一次重新选择，都有勇气，也有花开。",
+        "停下当前这条医学路径，不代表前面的努力失去意义。你已经走过很远，愿接下来的生活更宽、更稳，也更接近你真正想要的样子。"
+      ]
+      :[
+        "你走过考试、夜班、选择和失落，也留下了自己的答案。愿未来的路不必完美，但每一步都值得，愿你一路生花。",
+        "有人走得快，有人绕得远。无论这一局写下怎样的结局，愿你仍保有好奇、善意和重新选择的自由。",
+        "从第一张录取通知书，到今天这一个结局，你已经走过了很长的路。愿你以后既能成为想成为的人，也别忘了照顾一路走来的自己。"
+      ];
+    var seed=(state&&state.log?state.log.length:0)+(ending&&ending[0]?ending[0].length:0);
+    el("endingBlessingText").textContent=messages[seed%messages.length];
+    el("endingBlessingOverlay").hidden=false;
+    document.body.classList.add("modal-open");
+  }
+
+  function closeEndingBlessing(){
+    el("endingBlessingOverlay").hidden=true;
+    document.body.classList.remove("modal-open");
   }
 
   function serializableState(){
@@ -1821,6 +1844,14 @@
   el("legacyMessage").addEventListener("input",function(){
     el("messageCount").textContent=this.value.length+" / 200";
   });
+  el("blessingCloseBtn").addEventListener("click",closeEndingBlessing);
+  el("blessingMessageBtn").addEventListener("click",function(){
+    closeEndingBlessing();
+    var board=document.querySelector(".legacy-board");
+    if(board)board.scrollIntoView({behavior:"smooth",block:"start"});
+    window.setTimeout(function(){if(el("legacyMessage"))el("legacyMessage").focus();},420);
+  });
+
   el("admissionResultBtn").addEventListener("click",confirmAdmissionResult);
 
   el("postMessageBtn").addEventListener("click",postLegacyMessage);
