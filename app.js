@@ -159,6 +159,8 @@
     el("stopBtn").disabled=true;
     el("scoreResult").hidden=true;
     el("scoreResult").innerHTML="";
+    el("scoreEligibility").hidden=true;
+    el("scoreEligibility").innerHTML="";
   }
 
   function beginGaokao(){
@@ -896,6 +898,7 @@
   function renderJourney(){
     var school=currentSchool(),wins=successfulApplications();
     var items=[
+      ["出生环境",backgroundShort(state.background)],
       ["起点",school?school.name:"—"],
       ["学历层级",highestEducationLabel()],
       ["主要路线",state.route||"—"],
