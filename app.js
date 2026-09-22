@@ -11,6 +11,8 @@
   var EDUCATION_DATA=window.EDUCATION_DATA;
   var LANGUAGE_DATA=window.LANGUAGE_DATA;
   var JOB_DATA=window.JOB_DATA;
+  var ITEM_DATA=window.ITEM_DATA;
+  var AD_SERVICE=window.AD_SERVICE;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var BOARD=window.MESSAGE_BOARD;
   var DIFFICULTIES=DATA.difficulties;
@@ -18,7 +20,7 @@
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
   var ORDER=CAREER_DATA.order.concat(COLLEGE_DATA?COLLEGE_DATA.order:[]);
-  var SAVE_KEY="doctor-life-sim-v10";
+  var SAVE_KEY="doctor-life-sim-v11";
   var BOARD_KEY="doctor-life-message-wall-v1";
 
   var state=null;
@@ -31,6 +33,8 @@
   var schoolLevelFilter="all";
   var schoolSearchQuery="";
   var boardSort="newest";
+  var currentCrisisStat=null;
+  var rewardBusy=false;
 
   var statKeys=["knowledge","energy","mental","money","research","reputation","english"];
   var statNames={knowledge:"知识",energy:"体力",mental:"心理",money:"金钱",research:"科研",reputation:"声望",english:"英语"};
@@ -804,7 +808,7 @@
     stats.english=talents.english;
 
     state={
-      version:10,
+      version:11,
       name:pendingName,
       background:bg,
       difficulty:selectedDifficulty,
@@ -829,6 +833,12 @@
       job:null,
       jobApplication:null,
       jobFailures:0,
+      inventory:Object.assign({},ITEM_DATA?ITEM_DATA.defaultInventory:{}),
+      checkpoint:null,
+      lastCheckpointScene:null,
+      crisisWarned:{energy:false,mental:false},
+      adRewardsClaimed:0,
+      hintScene:null,
       specialtyId:null,
       specialtyReturnNext:null,
       route:(school.educationLevel==="专科"?"专科·未分流":"本科·未分流"),
@@ -913,6 +923,233 @@
       state.stats[k]=(state.stats[k]||0)+delta;
     });
     clampStats();
+  }
+
+
+  function isCompetitiveScene(scene,e){
+    scene=scene||state&&state.scene||"";
+    e=e||state&&allEvents()[scene]||null;
+    if(/^(edu_master|edu_phd|grad_exam|exam_fail|recommended_postgrad|job_)/.test(scene))return true;
+    if(e&&["educationSchool","educationApply","educationResult","jobMarket","jobResult"].indexOf(e.type)>=0)return true;
+    return false;
+  }
+
+  function itemUseLocked(){
+    if(!state)return true;
+    return isCompetitiveScene(state.scene,allEvents()[state.scene]);
+  }
+
+  function itemById(id){
+    return ITEM_DATA&&ITEM_DATA.items?ITEM_DATA.items[id]:null;
+  }
+
+  function itemCount(id){
+    return state&&state.inventory?Number(state.inventory[id]||0):0;
+  }
+
+  function setItemCount(id,value){
+    var item=itemById(id);
+    if(!item||!state)return;
+    state.inventory=state.inventory||Object.assign({},ITEM_DATA.defaultInventory);
+    state.inventory[id]=clamp(Math.round(value),0,item.max||99);
+  }
+
+  function grantItem(id,count){
+    var item=itemById(id);
+    if(!item||!state)return false;
+    setItemCount(id,itemCount(id)+(count||1));
+    addLog("人生道具","获得「"+item.name+"」×"+(count||1)+"。");
+    return true;
+  }
+
+  function snapshotForCheckpoint(){
+    var raw=serializableState();
+    if(!raw)return null;
+    delete raw.checkpoint;
+    delete raw.lastCheckpointScene;
+    raw.finished=false;
+    return JSON.parse(JSON.stringify(raw));
+  }
+
+  function captureCheckpointIfEligible(e){
+    if(!state||!e)return;
+    if(isCompetitiveScene(state.scene,e)){
+      state.checkpoint=null;
+      state.lastCheckpointScene=null;
+      return;
+    }
+    if(e.type!=="key"||state.lastCheckpointScene===state.scene)return;
+    state.checkpoint={
+      scene:state.scene,
+      title:e.title||e.stage||"关键节点",
+      data:snapshotForCheckpoint()
+    };
+    state.lastCheckpointScene=state.scene;
+    addLog("关键节点","已记录可回溯节点：「"+state.checkpoint.title+"」。");
+  }
+
+  function renderInventory(){
+    if(!state||!ITEM_DATA||!el("inventoryItems"))return;
+    var locked=itemUseLocked();
+    el("inventoryLockNote").textContent=locked?"当前为升学/申博/求职竞争流程，道具与广告补给锁定":"广告只提供资源和容错，不改变录取或录用结果";
+    el("openSupplyBtn").disabled=locked;
+    el("openSupplyBtn").textContent=locked?"竞争流程中不可补给":"获取补给";
+    var ids=["energy_card","mental_card","english_card","hint_card","rewind_card"];
+    el("inventoryItems").innerHTML=ids.map(function(id){
+      var item=itemById(id),count=itemCount(id);
+      var disabled=locked||count<=0;
+      if(id==="rewind_card"&&!state.checkpoint)disabled=true;
+      var label=id==="rewind_card"?"回溯":id==="hint_card"?"提示":"使用";
+      return "<button class=\"inventory-chip\" data-use-item=\""+id+"\" "+(disabled?"disabled":"")+">"+
+        "<span class=\"inventory-icon\">"+escapeHtml(item.icon)+"</span>"+
+        "<span><b>"+escapeHtml(item.name)+"</b><small>×"+count+"</small></span>"+
+        "<em>"+label+"</em></button>";
+    }).join("");
+  }
+
+  function decisionHintHtml(e){
+    if(!e||!e.choices)return "";
+    return e.choices.filter(choiceVisible).map(function(choice){
+      var impacts=[];
+      var et=effectText(choice.effects);
+      if(et)impacts.push(et);
+      if(choice.route)impacts.push("路线："+choice.route);
+      if(choice.specialtyId||choice.eduSpecialtyId)impacts.push("长期科室/学科分流");
+      if(choice.application)impacts.push("进入竞争性机会流程");
+      if(choice.chance)impacts.push("存在不确定结果");
+      if(!impacts.length)impacts.push("主要影响后续剧情与隐藏经历");
+      return "<div class=\"decision-hint-row\"><b>"+escapeHtml(choice.text)+"</b><span>"+escapeHtml(impacts.join(" · "))+"</span></div>";
+    }).join("");
+  }
+
+  function renderDecisionHint(e){
+    if(!el("decisionHintPanel"))return;
+    var show=!!(state&&state.hintScene===state.scene&&!isCompetitiveScene(state.scene,e));
+    el("decisionHintPanel").hidden=!show;
+    if(show)el("decisionHintContent").innerHTML=decisionHintHtml(e);
+  }
+
+  function useItem(id,options){
+    options=options||{};
+    var item=itemById(id);
+    if(!item||!state)return false;
+    if(itemUseLocked()){
+      addLog("道具锁定","考研、申博和求职竞争流程中不能使用道具改变当前状态。");
+      renderInventory();
+      return false;
+    }
+    if(itemCount(id)<=0)return false;
+
+    if(item.action==="rewind"){
+      if(!state.checkpoint||!state.checkpoint.data)return false;
+      var target=JSON.parse(JSON.stringify(state.checkpoint.data));
+      setItemCount(id,itemCount(id)-1);
+      target.inventory=Object.assign({},state.inventory);
+      target.adRewardsClaimed=state.adRewardsClaimed||0;
+      target.checkpoint=null;
+      target.lastCheckpointScene=null;
+      target.hintScene=null;
+      addLog("人生回溯","使用人生回溯卡，返回「"+state.checkpoint.title+"」。");
+      return restoreState(target);
+    }
+
+    if(item.action==="hint"){
+      setItemCount(id,itemCount(id)-1);
+      state.hintScene=state.scene;
+      addLog("决策提示","使用决策提示卡查看当前选择可能影响的属性和路线。");
+      saveState();render();
+      return true;
+    }
+
+    setItemCount(id,itemCount(id)-1);
+    applyEffects(item.effect||{});
+    if(id==="english_card"&&state.talents)state.talents.english=state.stats.english;
+    addLog("使用道具","使用「"+item.name+"」"+(effectText(item.effect)?"（"+effectText(item.effect)+"）":"")+"。");
+    if(options.closeCrisis)closeCrisis();
+    saveState();render();
+    return true;
+  }
+
+  function openSupply(){
+    if(!state||itemUseLocked()||rewardBusy)return;
+    var ids=["energy_card","mental_card","english_card","hint_card","rewind_card"];
+    el("supplyOptions").innerHTML=ids.map(function(id){
+      var item=itemById(id),full=itemCount(id)>=(item.max||99);
+      return "<button class=\"supply-option\" data-reward-item=\""+id+"\" "+(full?"disabled":"")+">"+
+        "<span>"+escapeHtml(item.icon)+"</span><div><b>"+escapeHtml(item.name)+"</b><small>"+escapeHtml(item.desc)+"</small></div>"+
+        "<em>"+(full?"已满":escapeHtml(AD_SERVICE?AD_SERVICE.label():"暂不可用"))+"</em></button>";
+    }).join("");
+    el("supplyOverlay").hidden=false;
+    document.body.classList.add("modal-open");
+  }
+
+  function closeSupply(){
+    el("supplyOverlay").hidden=true;
+    if(el("crisisOverlay").hidden)document.body.classList.remove("modal-open");
+  }
+
+  function requestRewardItem(id,autoUse,button){
+    if(rewardBusy||itemUseLocked()||!AD_SERVICE)return;
+    var item=itemById(id);
+    if(!item)return;
+    rewardBusy=true;
+    var oldText=button&&button.textContent;
+    if(button){button.disabled=true;button.textContent="正在加载…";}
+    AD_SERVICE.watchRewarded().then(function(res){
+      if(res&&res.completed){
+        grantItem(id,1);
+        state.adRewardsClaimed=(state.adRewardsClaimed||0)+1;
+        if(autoUse)useItem(id,{closeCrisis:true});
+        else{saveState();renderInventory();openSupply();}
+      }else{
+        addLog("广告奖励","未完整观看，本次不发放道具。");
+      }
+    }).catch(function(){
+      addLog("广告奖励","当前广告暂不可用，请稍后再试。");
+    }).then(function(){
+      rewardBusy=false;
+      if(button){button.disabled=false;button.textContent=oldText||"获取";}
+      saveState();
+    });
+  }
+
+  function maybeWarnCrisis(e){
+    if(!state||state.finished||el("gameScreen").hidden)return;
+    state.crisisWarned=state.crisisWarned||{energy:false,mental:false};
+    var thresholds=ITEM_DATA&&ITEM_DATA.crisisThresholds||{energy:15,mental:15};
+    ["energy","mental"].forEach(function(k){
+      if(state.stats[k]>thresholds[k]+6)state.crisisWarned[k]=false;
+    });
+    if(!el("crisisOverlay").hidden)return;
+    var stat=null;
+    if(state.stats.energy>0&&state.stats.energy<=thresholds.energy&&!state.crisisWarned.energy)stat="energy";
+    else if(state.stats.mental>0&&state.stats.mental<=thresholds.mental&&!state.crisisWarned.mental)stat="mental";
+    if(!stat)return;
+
+    state.crisisWarned[stat]=true;
+    currentCrisisStat=stat;
+    var locked=isCompetitiveScene(state.scene,e);
+    var id=stat==="energy"?"energy_card":"mental_card";
+    var item=itemById(id);
+    el("crisisIcon").textContent=stat==="energy"?"⚡":"🧠";
+    el("crisisTitle").textContent=(stat==="energy"?"体力":"心理")+"即将见底";
+    el("crisisText").textContent=locked
+      ?("当前"+statNames[stat]+"只剩 "+state.stats[stat]+"。你正处于考研、申博或求职竞争流程，道具与广告补给已锁定，只能依靠后续选择继续。")
+      :("当前"+statNames[stat]+"只剩 "+state.stats[stat]+"。继续高消耗选择可能提前结束这条人生路线。你可以使用已有恢复卡，或自愿获取一张恢复卡。");
+    el("crisisUseBtn").hidden=locked;
+    el("crisisAdBtn").hidden=locked;
+    el("crisisUseBtn").disabled=itemCount(id)<=0;
+    el("crisisUseBtn").textContent=itemCount(id)>0?"使用"+item.name+"（现有 ×"+itemCount(id)+"）":"暂无"+item.name;
+    el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"获取")+" · "+item.name;
+    el("crisisOverlay").hidden=false;
+    document.body.classList.add("modal-open");
+    saveState();
+  }
+
+  function closeCrisis(){
+    el("crisisOverlay").hidden=true;
+    currentCrisisStat=null;
+    if(el("supplyOverlay").hidden)document.body.classList.remove("modal-open");
   }
 
   function applyTalentEffects(effects){
@@ -1815,6 +2052,9 @@
     renderJourneyRibbon("gameScreen");
     renderEducationTimeline();
     applyStageBackground();
+    captureCheckpointIfEligible(e);
+    renderInventory();
+    renderDecisionHint(e);
 
     el("stageChip").textContent=e.stage;
     el("yearText").textContent=e.year;
@@ -1880,6 +2120,7 @@
     });
 
     renderLog();saveState();
+    window.setTimeout(function(){maybeWarnCrisis(e);},80);
   }
 
   function renderLog(){
@@ -2180,6 +2421,12 @@
     state.researchJob=raw.researchJob||null;
     state.jobApplication=raw.jobApplication||null;
     state.jobFailures=raw.jobFailures||0;
+    state.inventory=Object.assign({},ITEM_DATA?ITEM_DATA.defaultInventory:{},raw.inventory||{});
+    state.checkpoint=raw.checkpoint||null;
+    state.lastCheckpointScene=raw.lastCheckpointScene||null;
+    state.crisisWarned=raw.crisisWarned||{energy:false,mental:false};
+    state.adRewardsClaimed=raw.adRewardsClaimed||0;
+    state.hintScene=raw.hintScene||null;
     state.specialtyId=raw.specialtyId||null;
     state.specialtyReturnNext=raw.specialtyReturnNext||null;
     state.route=raw.route||"本科·未分流";
@@ -2244,6 +2491,28 @@
   });
 
   el("admissionResultBtn").addEventListener("click",confirmAdmissionResult);
+
+  el("openSupplyBtn").addEventListener("click",openSupply);
+  el("closeSupplyBtn").addEventListener("click",closeSupply);
+  el("supplyOptions").addEventListener("click",function(e){
+    var btn=e.target.closest("[data-reward-item]");
+    if(!btn)return;
+    requestRewardItem(btn.getAttribute("data-reward-item"),false,btn);
+  });
+  el("inventoryItems").addEventListener("click",function(e){
+    var btn=e.target.closest("[data-use-item]");
+    if(!btn||btn.disabled)return;
+    useItem(btn.getAttribute("data-use-item"));
+  });
+  el("crisisUseBtn").addEventListener("click",function(){
+    if(!currentCrisisStat)return;
+    useItem(currentCrisisStat==="energy"?"energy_card":"mental_card",{closeCrisis:true});
+  });
+  el("crisisAdBtn").addEventListener("click",function(){
+    if(!currentCrisisStat)return;
+    requestRewardItem(currentCrisisStat==="energy"?"energy_card":"mental_card",true,this);
+  });
+  el("crisisContinueBtn").addEventListener("click",closeCrisis);
 
   el("postMessageBtn").addEventListener("click",postLegacyMessage);
   el("viewAllMessagesBtn").addEventListener("click",function(){
