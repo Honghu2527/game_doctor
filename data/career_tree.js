@@ -181,7 +181,7 @@ window.CAREER_DATA = {
       choices:[
         {text:"临床医学专业型硕士",sub:"先选择专科方向；游戏中按专硕与规培并轨推进，临床任务重、科研时间更碎。",effects:{knowledge:6,reputation:3,energy:-4},flags:["clinicalMaster","integratedResidency"],route:"研究生·临床专硕（并轨规培）",next:"specialty_select_clinical_master"},
         {text:"学术型硕士",sub:"先选择研究学科；以科研训练为主，不自动完成规培。",effects:{research:8,mental:-2},flags:["academicMaster"],route:"研究生·学硕（科研训练）",next:"specialty_select_academic_master"},
-        {text:"尝试直博 / 长学制科研路线",sub:"科研基础较强时可冲；直博先选学科方向，但不等于已经完成规培。",effects:{research:6,energy:-3},requires:{stats:{research:35}},chance:{p:.45,bonusBy:["research","researchSense","reputation"],success:{research:6,reputation:6,mental:5},fail:{mental:-4},successFlags:["directPhdOffer"],failFlags:["directPhdMiss"]},successNext:"specialty_select_direct_phd",failNext:"specialty_select_academic_master",route:"博士·直博申请"}
+        {text:"尝试直博 / 长学制科研路线",sub:"科研基础较强时可冲；直博先选学科方向，但不等于已经完成规培。",effects:{research:6,energy:-3},requires:{stats:{research:35}},chance:{p:.45,bonusBy:["research","researchSense","reputation"],success:{research:6,reputation:6,mental:5},fail:{mental:-4},successFlags:["directPhdOffer"],failFlags:["directPhdMiss","academicMaster"]},successNext:"specialty_select_direct_phd",failNext:"specialty_select_academic_master",route:"博士·直博申请"}
       ]
     },
 
