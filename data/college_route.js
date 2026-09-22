@@ -3,6 +3,7 @@ window.COLLEGE_DATA = {
   order:[
     "college_fresh","college_key_track","college_skill_year","college_opportunity_round",
     "college_internship","college_key_graduation","college_upgrade_exam","college_upgrade_success",
+    "college_bachelor_bridge","college_bachelor_focus","college_bachelor_internship","college_bachelor_graduation",
     "college_upgrade_fail","college_practice_entry","college_practice_years","college_late_choice",
     "college_primary_career"
   ],
@@ -83,11 +84,52 @@ window.COLLEGE_DATA = {
     },
 
     college_upgrade_success:{
-      stage:"专升本成功",year:"21-23岁",title:"你重新拿到了本科阶段的入场券",type:"main",
-      text:"这不是把前三年清零，而是把你已有的技能、实习经历和升学经验带进下一阶段。",
+      stage:"专升本成功",year:"21岁",title:"你拿到了本科阶段的新录取结果",type:"main",
+      text:"这不是“专科毕业后直接考研”。从今天开始，你还要真正完成本科衔接课程、临床学习和本科毕业环节，之后才拥有考研、规培或海外申请的本科毕业分流。",
       choices:[
-        {text:"本科阶段继续冲研究生",sub:"重新打开硕士和博士路线。",effects:{knowledge:6,research:3,energy:-4},flags:["collegeToBachelorAcademic"],route:"本科衔接·继续升学",next:"key_graduation"},
-        {text:"本科阶段临床能力优先",sub:"先补平台和学历，再把技能做强。",effects:{knowledge:7,reputation:4,energy:-3},flags:["collegeToBachelorClinical"],route:"本科衔接·临床优先",next:"key_graduation"}
+        {text:"进入本科衔接阶段",sub:"保留专科经历，同时新增本科教育记录。",effects:{knowledge:3,mental:4},flags:["collegeBachelorBridge"],route:"专科→本科·衔接阶段",next:"college_bachelor_bridge"}
+      ]
+    },
+
+    college_bachelor_bridge:{
+      stage:"专升本 · 本科衔接",year:"21-22岁",title:"进入本科后，第一件事不是考研，而是补齐本科培养要求",type:"main",
+      text:"课程衔接、学分、基础理论和新的同学体系都需要重新适应。你以前的专科实训经验是优势，但本科课程不会因此自动完成。",
+      choices:[
+        {text:"先把本科核心课程和学分稳住",sub:"不过度加码，把学历衔接做扎实。",effects:{knowledge:6,mental:3},flags:["bridgeFoundation"],next:"college_bachelor_focus"},
+        {text:"边补课程边加入本科科研项目",sub:"更早为未来考研建立科研经历。",effects:{knowledge:4,research:5,energy:-4},flags:["bridgeResearch"],next:"college_bachelor_focus"},
+        {text:"利用已有技能优势，多参加临床技能训练",sub:"把专科阶段的实践经验继续放大。",effects:{knowledge:5,reputation:4,energy:-3},talentEffects:{dexterity:2},flags:["bridgeClinical"],next:"college_bachelor_focus"}
+      ]
+    },
+
+    college_bachelor_focus:{
+      stage:"专升本 · 本科阶段",year:"22-23岁",title:"本科衔接进入中段，你终于有余力重新规划毕业后的方向",type:"key",critical:true,
+      warning:"这里决定的是本科阶段如何准备，不是直接决定考研是否录取。",
+      text:"你需要在考研准备、临床能力和均衡发展之间重新分配时间。真正的升学申请会等到本科毕业后才开始。",
+      choices:[
+        {text:"考研准备优先",sub:"英语、理论和科研都开始提前布局。",effects:{knowledge:5,research:3,energy:-3},talentEffects:{english:2},flags:["collegeToBachelorAcademic"],route:"本科衔接·考研准备",next:"college_bachelor_internship"},
+        {text:"临床能力优先",sub:"利用既往实训基础，继续补病例和技能。",effects:{knowledge:6,reputation:4,energy:-3},talentEffects:{dexterity:2},flags:["collegeToBachelorClinical"],route:"本科衔接·临床优先",next:"college_bachelor_internship"},
+        {text:"先把本科毕业要求稳稳完成",sub:"不提前押注，保留毕业时再选择的自由。",effects:{knowledge:4,mental:5},flags:["collegeToBachelorBalanced"],route:"本科衔接·稳健完成",next:"college_bachelor_internship"}
+      ]
+    },
+
+    college_bachelor_internship:{
+      stage:"专升本 · 本科临床实习",year:"23-24岁",title:"你第二次进入实习，但这一次身份和要求已经不同",type:"main",
+      text:"以前在专科阶段学会的是“怎么做”，现在本科实习更要求你理解为什么、如何判断，以及如何为毕业后的升学或规培做准备。",
+      choices:[
+        {text:"把病例和临床基本功做深",sub:"为直接规培或临床型研究生打基础。",effects:{knowledge:7,reputation:4,energy:-5},talentEffects:{communication:1,dexterity:1},flags:["bridgeInternClinical"],next:"college_bachelor_graduation"},
+        {text:"实习同时维持考研复习",sub:"双线推进，但不是立刻参加考试。",effects:{knowledge:6,research:2,energy:-5,mental:-2},talentEffects:{english:1},flags:["bridgeInternExam"],next:"college_bachelor_graduation"},
+        {text:"优先把毕业要求和状态稳住",sub:"减少透支，为毕业后的选择保留体力。",effects:{knowledge:4,mental:5,energy:3},flags:["bridgeInternBalanced"],next:"college_bachelor_graduation"}
+      ]
+    },
+
+    college_bachelor_graduation:{
+      stage:"⚠️ 关键节点 · 专升本本科毕业",year:"24-25岁",title:"现在你才真正来到本科毕业分流",type:"key",critical:true,
+      warning:"只有走到这里以后，才进入考研、直接规培/就业或海外申请。专科阶段本身不会直接跳到硕士。",
+      text:"专科三年、本科衔接与第二轮实习都已经写进你的履历。接下来你终于可以按本科毕业生身份选择下一条路。",
+      choices:[
+        {text:"参加全国硕士研究生考试",sub:"从这里开始才进入目标院校、专业、备考、初试/复试和录取流程。",effects:{knowledge:3},flags:["gradExam","collegeBachelorGraduate"],route:"升学·专升本后考研",next:"edu_master_exam_type"},
+        {text:"直接就业 / 进入规培",sub:"本科毕业后先选择规培方向，再进入住院医师规范化培训。",effects:{money:5,reputation:2},flags:["noMaster","directResident","collegeBachelorGraduate"],route:"临床·专升本后直接规培",next:"specialty_select_resident"},
+        {text:"申请海外研究型项目",sub:"英语达到要求后，可进入海外院校和研究方向申请流程。",effects:{money:-3},requires:{talents:{english:58}},flags:["overseasApplicant","collegeBachelorGraduate"],route:"升学·专升本后海外申请",next:"edu_master_overseas_school"}
       ]
     },
 
