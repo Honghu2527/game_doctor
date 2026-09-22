@@ -1,9 +1,10 @@
 (function(){
   "use strict";
 
+  var RUNTIME=(typeof window!=="undefined"&&window.__WECHAT_CONFIG__)||{};
   var CONFIG={
-    // 微信小程序正式上线后填真实激励视频广告位 ID。
-    rewardedAdUnitId:""
+    // 小程序构建从 wechat-src/wechat.config.js 注入；网页版保持为空。
+    rewardedAdUnitId:RUNTIME.rewardedAdUnitId||""
   };
 
   var rewardedAd=null;
@@ -41,8 +42,12 @@
     });
   }
 
+  function isWechatRuntime(){
+    return typeof wx!=="undefined"&&!!wx;
+  }
+
   function watchWebSimulation(){
-    // 网页版仅用于测试奖励机制，不展示商业广告。
+    // 仅网页预览使用模拟奖励；正式微信环境若没有广告位，绝不发放模拟奖励。
     return new Promise(function(resolve){
       window.setTimeout(function(){
         resolve({completed:true,provider:"web-sim",simulated:true});
@@ -52,13 +57,16 @@
 
   window.AD_SERVICE={
     config:CONFIG,
-    mode:hasWeChatRewarded()?"wechat":"web-sim",
+    mode:hasWeChatRewarded()?"wechat":(isWechatRuntime()?"wechat-unconfigured":"web-sim"),
     isRealAdAvailable:hasWeChatRewarded,
     label:function(){
-      return hasWeChatRewarded()?"观看广告领取":"网页版测试领取";
+      if(hasWeChatRewarded())return "观看广告领取";
+      return isWechatRuntime()?"广告暂未配置":"网页版测试领取";
     },
     watchRewarded:function(){
-      return hasWeChatRewarded()?watchWechat():watchWebSimulation();
+      if(hasWeChatRewarded())return watchWechat();
+      if(isWechatRuntime())return Promise.reject(new Error("rewarded ad unit id is not configured"));
+      return watchWebSimulation();
     }
   };
 })();
