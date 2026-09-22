@@ -247,6 +247,19 @@
       <button id="endingRestartBtn" class="primary-btn">重新开启一局</button>
     </section>
 
+    <div id="endingBlessingOverlay" class="ending-blessing-overlay" hidden>
+      <div class="ending-blessing-modal" role="dialog" aria-modal="true" aria-labelledby="endingBlessingTitle">
+        <div class="blessing-symbol" aria-hidden="true">✦</div>
+        <div class="eyebrow">A NOTE FOR YOUR JOURNEY</div>
+        <h2 id="endingBlessingTitle">这一段路，走到这里了</h2>
+        <p id="endingBlessingText"></p>
+        <div class="blessing-actions">
+          <button id="blessingMessageBtn" class="primary-btn">留一句给后来的人</button>
+          <button id="blessingCloseBtn" class="ghost-btn">看看我的结局</button>
+        </div>
+      </div>
+    </div>
+
     <div id="admissionOverlay" class="admission-overlay" hidden>
       <div class="admission-modal" role="dialog" aria-modal="true" aria-labelledby="admissionModalTitle">
         <div id="admissionSearching" class="admission-searching">
