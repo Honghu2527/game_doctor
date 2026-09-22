@@ -28,6 +28,6 @@ window.ITEM_DATA = {
     hint_card:0,
     rewind_card:0
   },
-  crisisThresholds:{energy:15,mental:15},
+  crisisThresholds:{energy:20,mental:20},
   competitiveScenePattern:"^(edu_master|edu_phd|grad_exam|exam_fail|recommended_postgrad|job_|__OPPORTUNITY_FLOW__)"
 };
