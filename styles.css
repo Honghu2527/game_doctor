@@ -1,0 +1,77 @@
+:root{
+  --bg:#f4efe5;--paper:rgba(255,255,255,.88);--paper-2:#fffdf8;--ink:#18262b;--muted:#6d7778;
+  --line:#d9d0c2;--accent:#7f2e35;--accent-2:#1f6159;--gold:#9a6d2f;
+  --shadow:0 18px 55px rgba(31,42,46,.09)
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--bg)}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:radial-gradient(circle at top,#fffaf0 0,var(--bg) 48%,#ece4d8 100%);overflow-x:hidden}
+button,input{font:inherit}
+button{color:inherit}
+.ambient{position:fixed;border-radius:50%;filter:blur(80px);opacity:.18;pointer-events:none}
+.ambient-a{width:320px;height:320px;background:#8aa9a0;right:-120px;top:80px}
+.ambient-b{width:300px;height:300px;background:#c49a75;left:-130px;bottom:30px}
+.app-shell{width:min(980px,calc(100% - 28px));margin:0 auto;padding:34px 0 50px;position:relative}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px}
+.eyebrow{font-size:11px;letter-spacing:.18em;color:var(--accent);font-weight:900}
+.topbar h1{margin:6px 0 7px;font-family:Georgia,"Noto Serif SC",serif;font-size:clamp(34px,6vw,60px);line-height:.98;letter-spacing:-.02em}
+.subtitle{margin:0;color:var(--muted);line-height:1.65;max-width:720px}
+.panel{background:var(--paper);border:1px solid rgba(87,74,61,.16);box-shadow:var(--shadow);border-radius:24px;padding:clamp(22px,4vw,38px);backdrop-filter:blur(12px)}
+.start-panel,.ending-panel{max-width:780px}
+.hero-badge{display:inline-flex;padding:7px 11px;border-radius:999px;background:#efe4d3;color:#654b30;font-size:12px;font-weight:900;letter-spacing:.04em}
+.start-panel h2,.ending-panel h2{font-family:Georgia,"Noto Serif SC",serif;font-size:clamp(28px,5vw,38px);margin:19px 0 10px}
+.intro,.ending-panel p{color:var(--muted);line-height:1.8}
+.form-row{margin-top:26px}
+.form-row label,.section-label{display:block;font-weight:800;margin-bottom:9px}
+.form-row input{width:100%;border:1px solid var(--line);background:var(--paper-2);border-radius:14px;padding:13px 15px;outline:none}
+.form-row input:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px rgba(31,97,89,.09)}
+.section-label{margin-top:22px}
+.difficulty-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 15px}
+.difficulty-card{border:1px solid var(--line);background:var(--paper-2);border-radius:16px;padding:16px;cursor:pointer;text-align:left;transition:.18s}
+.difficulty-card:hover{transform:translateY(-2px);border-color:#bcae9b}
+.difficulty-card.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(127,46,53,.08)}
+.difficulty-card strong{display:block;margin-bottom:6px}
+.difficulty-card span{font-size:13px;color:var(--muted);line-height:1.5}
+.start-note{font-size:12px;color:var(--muted);margin:10px 0 20px}
+.primary-btn,.ghost-btn,.mini-btn,.choice-btn{border:0;border-radius:14px;cursor:pointer;transition:.18s}
+.primary-btn{background:var(--accent);color:#fff;padding:14px 20px;font-weight:900;box-shadow:0 8px 22px rgba(127,46,53,.18)}
+.primary-btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.ghost-btn,.mini-btn{background:rgba(255,255,255,.45);border:1px solid var(--line);padding:9px 12px}
+.status-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px}
+.status-card{background:rgba(255,255,255,.75);border:1px solid rgba(87,74,61,.12);padding:12px 10px;border-radius:15px;text-align:center;box-shadow:0 7px 22px rgba(31,42,46,.035)}
+.status-card span{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+.status-card strong{font-size:21px;font-variant-numeric:tabular-nums}
+.story-panel{min-height:430px}
+.timeline-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.stage-chip{padding:7px 10px;background:#e0eee9;color:#214d46;border-radius:999px;font-size:12px;font-weight:900}
+.year-text{font-size:12px;color:var(--muted)}
+.progress-track{height:4px;background:#e9e1d6;border-radius:99px;margin:18px 0 0;overflow:hidden}
+.progress-bar{height:100%;width:0;background:var(--accent-2);border-radius:99px;transition:width .35s ease}
+.story-panel h2{font-family:Georgia,"Noto Serif SC",serif;font-size:clamp(28px,5vw,43px);margin:20px 0 12px}
+.scene-text{font-size:17px;line-height:1.9;white-space:pre-line}
+.effect-hint{font-size:13px;color:var(--muted);margin-top:12px}
+.choices{display:grid;gap:11px;margin-top:28px}
+.choice-btn{text-align:left;background:var(--paper-2);border:1px solid var(--line);padding:15px 16px;color:var(--ink)}
+.choice-btn:hover{border-color:var(--accent-2);transform:translateX(3px);box-shadow:0 8px 22px rgba(31,97,89,.06)}
+.choice-btn b{display:block;margin-bottom:5px}
+.choice-btn small{color:var(--muted);line-height:1.5}
+.choice-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.log-panel{margin-top:14px}
+.panel-title-row{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.panel-title-row h3{margin:3px 0 0}
+.life-log{margin-top:16px;display:grid;gap:10px;max-height:280px;overflow:auto;padding-right:4px}
+.log-item{border-left:3px solid #c8b8a2;padding:4px 0 4px 12px;color:#4f5b5e;font-size:14px;line-height:1.55}
+.log-item strong{color:var(--ink)}
+.ending-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0}
+.ending-stat{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--paper-2)}
+.ending-stat span{display:block;font-size:12px;color:var(--muted)}
+.ending-stat strong{font-size:22px}
+.ending-tags{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}
+.ending-tag{padding:6px 9px;border-radius:999px;background:#e8eee9;color:#36554d;font-size:12px;font-weight:800}
+footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:#8a8983;font-size:11px;padding:22px 3px 0}
+[hidden]{display:none!important}
+@media(max-width:760px){
+  .app-shell{padding-top:22px}.topbar{flex-direction:column}.difficulty-grid{grid-template-columns:1fr}
+  .status-grid{grid-template-columns:repeat(3,1fr)}.ending-stats{grid-template-columns:repeat(2,1fr)}
+  .panel{border-radius:20px}.scene-text{font-size:16px}
+}
