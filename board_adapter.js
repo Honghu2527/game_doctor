@@ -56,7 +56,13 @@
       }
       var legacy=safeParse(localStorage.getItem(LEGACY_KEY),[]);
       if(legacy.length){
-        var migrated=legacy.map(normalizeMessage);
+        var owner=getUserId();
+        var migrated=legacy.map(function(item){
+          var copy=Object.assign({},item);
+          copy.ownerId=owner;
+          copy.createdAt=copy.createdAt||Date.now();
+          return normalizeMessage(copy);
+        });
         write(migrated);
         return migrated;
       }
