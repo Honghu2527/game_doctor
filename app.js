@@ -8,6 +8,7 @@
   var CAREER_DATA=window.CAREER_DATA;
   var COLLEGE_DATA=window.COLLEGE_DATA;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
+  var BOARD=window.MESSAGE_BOARD;
   var DIFFICULTIES=DATA.difficulties;
   var CAREER_EVENTS=CAREER_DATA.events;
   var SIDE_EVENTS=DATA.sideEvents;
@@ -25,6 +26,7 @@
   var pendingBackground=null;
   var schoolLevelFilter="all";
   var schoolSearchQuery="";
+  var boardSort="newest";
 
   var statKeys=["knowledge","energy","mental","money","research","reputation"];
   var statNames={knowledge:"知识",energy:"体力",mental:"心理",money:"金钱",research:"科研",reputation:"声望"};
@@ -773,6 +775,10 @@
     statKeys.forEach(function(k){
       var id="stat"+k.charAt(0).toUpperCase()+k.slice(1);
       el(id).textContent=state.stats[k];
+      var meterId="meter"+k.charAt(0).toUpperCase()+k.slice(1);
+      if(el(meterId))el(meterId).style.width=state.stats[k]+"%";
+      var card=document.querySelector('[data-stat="'+k+'"]');
+      if(card)card.classList.toggle("is-low",state.stats[k]<=25);
     });
 
     el("metaSchool").textContent=school?school.name:"—";
@@ -911,30 +917,79 @@
     }).join("");
   }
 
-  function loadWall(){
-    try{
-      var raw=localStorage.getItem(BOARD_KEY);
-      return raw?JSON.parse(raw):[];
-    }catch(e){return [];}
+  function boardDate(ts){
+    var d=new Date(ts||Date.now());
+    return d.toLocaleDateString("zh-CN",{month:"numeric",day:"numeric"})+" "+d.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:false});
   }
 
-  function saveWall(list){
-    try{localStorage.setItem(BOARD_KEY,JSON.stringify(list.slice(0,30)));}catch(e){}
+  function emptyBoardHtml(){
+    return "<div class=\"wall-card wall-empty\"><p>还没有留言。完成这一局以后，你可以成为第一位留言者。</p><div class=\"wall-meta\"><span>等待第一句话</span></div></div>";
+  }
+
+  function tickerCard(m){
+    return "<article class=\"ticker-card\">"+
+      "<div class=\"ticker-quote\">“</div>"+
+      "<p>"+escapeHtml(m.message)+"</p>"+
+      "<div class=\"ticker-meta\"><strong>"+escapeHtml(m.author)+"</strong><span>"+escapeHtml(m.school)+"</span><span>♡ "+(m.likes||[]).length+" · 💬 "+(m.comments||[]).length+"</span></div>"+
+    "</article>";
+  }
+
+  function renderTicker(){
+    if(!BOARD)return;
+    var list=BOARD.latest(10);
+    var track=el("messageTickerTrack");
+    if(!list.length){
+      track.innerHTML=emptyBoardHtml();
+      track.classList.remove("is-scrolling");
+      return;
+    }
+    var cards=list.map(tickerCard).join("");
+    track.innerHTML=list.length>2?cards+cards:cards;
+    track.classList.toggle("is-scrolling",list.length>2);
+  }
+
+  function commentHtml(message,comment){
+    var canDelete=BOARD.canDeleteComment(message,comment);
+    return "<div class=\"comment-item\">"+
+      "<div class=\"comment-copy\"><strong>"+escapeHtml(comment.author)+"</strong><p>"+escapeHtml(comment.text)+"</p><span>"+boardDate(comment.createdAt)+"</span></div>"+
+      (canDelete?"<button class=\"comment-delete\" data-action=\"delete-comment\" data-message=\""+message.id+"\" data-comment=\""+comment.id+"\">删除</button>":"")+
+    "</div>";
+  }
+
+  function wallCard(m){
+    var me=BOARD.currentUserId();
+    var liked=(m.likes||[]).indexOf(me)>=0;
+    var canDelete=BOARD.canDeleteMessage(m);
+    var comments=(m.comments||[]).slice().sort(function(x,y){return x.createdAt-y.createdAt;});
+    return "<article class=\"wall-card community-card\" data-message-id=\""+m.id+"\">"+
+      "<div class=\"community-head\">"+
+        "<div class=\"avatar-dot\">"+escapeHtml((m.author||"医").slice(0,1))+"</div>"+
+        "<div><strong>"+escapeHtml(m.author)+"</strong><span>"+escapeHtml(m.school)+" · "+escapeHtml(m.ending)+"</span></div>"+
+        "<time>"+boardDate(m.createdAt)+"</time>"+
+      "</div>"+
+      "<p class=\"community-message\">"+escapeHtml(m.message)+"</p>"+
+      "<div class=\"community-actions\">"+
+        "<button class=\"social-btn "+(liked?"liked":"")+"\" data-action=\"like\" data-message=\""+m.id+"\">"+(liked?"♥":"♡")+" <span>"+(m.likes||[]).length+"</span></button>"+
+        "<button class=\"social-btn\" data-action=\"focus-comment\" data-message=\""+m.id+"\">💬 <span>"+comments.length+"</span></button>"+
+        (canDelete?"<button class=\"social-btn danger-link\" data-action=\"delete-message\" data-message=\""+m.id+"\">删除留言</button>":"")+
+      "</div>"+
+      "<div class=\"comment-section\">"+
+        "<div class=\"comment-list\">"+(comments.length?comments.map(function(x){return commentHtml(m,x);}).join(""):"<div class=\"no-comment\">还没有评论，留下第一条回复。</div>")+"</div>"+
+        "<div class=\"comment-composer\"><input maxlength=\"120\" data-comment-input=\""+m.id+"\" placeholder=\"回复这条留言…\"><button data-action=\"add-comment\" data-message=\""+m.id+"\">发送</button></div>"+
+      "</div>"+
+    "</article>";
   }
 
   function renderWall(){
-    var list=loadWall().slice(0,10);
-    if(!list.length){
-      el("messageWall").innerHTML="<div class=\"wall-card\"><p>还没有留言。你可以成为这个设备上的第一位留言者。</p><div class=\"wall-meta\">网页版本地留言墙</div></div>";
-      return;
-    }
-    el("messageWall").innerHTML=list.map(function(m){
-      return "<div class=\"wall-card\"><p>"+escapeHtml(m.message)+"</p><div class=\"wall-meta\"><span>"+escapeHtml(m.author)+"</span><span>"+escapeHtml(m.school)+"</span><span>"+escapeHtml(m.ending)+"</span><span>"+escapeHtml(m.date)+"</span></div></div>";
-    }).join("");
+    if(!BOARD)return;
+    var list=BOARD.list(boardSort);
+    el("allMessageCount").textContent="共 "+list.length+" 条";
+    el("messageWall").innerHTML=list.length?list.map(wallCard).join(""):emptyBoardHtml();
+    renderTicker();
   }
 
   function postLegacyMessage(){
-    if(!state||!state.finished)return;
+    if(!state||!state.finished||!BOARD)return;
     var input=el("legacyMessage"),msg=input.value.trim();
     if(!msg){
       el("messageFeedback").hidden=false;
@@ -942,20 +997,59 @@
       return;
     }
     var school=currentSchool();
-    var list=loadWall();
-    list.unshift({
-      message:msg.slice(0,200),
+    BOARD.createMessage({
+      message:msg,
       author:state.name||"匿名医学生",
       school:school?school.name:"未知起点",
-      ending:el("endingTitle").textContent||"医学人生",
-      date:new Date().toLocaleDateString("zh-CN")
+      ending:el("endingTitle").textContent||"医学人生"
     });
-    saveWall(list);
     input.value="";
     el("messageCount").textContent="0 / 200";
     el("messageFeedback").hidden=false;
-    el("messageFeedback").textContent="这句话已经留在当前设备的留言墙上。小程序版接入云数据库后，可以升级为所有玩家共享。";
+    el("messageFeedback").textContent="已发布。当前网页版会立即更新本地留言墙；接入云数据库后，同样的界面会实时同步其他玩家的新留言。";
     renderWall();
+  }
+
+  function handleBoardAction(target){
+    if(!BOARD)return;
+    var action=target.getAttribute("data-action");
+    var messageId=target.getAttribute("data-message");
+    if(!action||!messageId)return;
+
+    if(action==="like"){
+      BOARD.toggleLike(messageId);
+      renderWall();
+      return;
+    }
+    if(action==="focus-comment"){
+      var input=document.querySelector('[data-comment-input="'+messageId+'"]');
+      if(input)input.focus();
+      return;
+    }
+    if(action==="add-comment"){
+      var commentInput=document.querySelector('[data-comment-input="'+messageId+'"]');
+      if(!commentInput)return;
+      var text=commentInput.value.trim();
+      if(!text)return;
+      BOARD.addComment(messageId,{text:text,author:(state&&state.name)||"匿名医学生"});
+      commentInput.value="";
+      renderWall();
+      return;
+    }
+    if(action==="delete-message"){
+      if(window.confirm("确定删除你自己的这条留言吗？")){
+        BOARD.deleteMessage(messageId);
+        renderWall();
+      }
+      return;
+    }
+    if(action==="delete-comment"){
+      var commentId=target.getAttribute("data-comment");
+      if(window.confirm("确定删除这条评论吗？")){
+        BOARD.deleteComment(messageId,commentId);
+        renderWall();
+      }
+    }
   }
 
   function showEnding(type){
@@ -972,6 +1066,7 @@
     var tags=Array.from(state.flags).map(humanFlag).filter(Boolean).slice(0,14);
     el("endingTags").innerHTML=tags.map(function(tag){return "<span class=\"ending-tag\">"+escapeHtml(tag)+"</span>";}).join("");
     renderJourney();
+    if(BOARD&&el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
     renderWall();
     saveState();window.scrollTo({top:0,behavior:"smooth"});
   }
@@ -1046,6 +1141,35 @@
     el("messageCount").textContent=this.value.length+" / 200";
   });
   el("postMessageBtn").addEventListener("click",postLegacyMessage);
+  el("viewAllMessagesBtn").addEventListener("click",function(){
+    el("allMessagesPanel").hidden=false;
+    renderWall();
+    el("allMessagesPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  el("closeAllMessagesBtn").addEventListener("click",function(){
+    el("allMessagesPanel").hidden=true;
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-board-sort]"),function(btn){
+    btn.addEventListener("click",function(){
+      boardSort=btn.getAttribute("data-board-sort")||"newest";
+      Array.prototype.forEach.call(document.querySelectorAll("[data-board-sort]"),function(x){x.classList.toggle("active",x===btn);});
+      renderWall();
+    });
+  });
+  el("messageWall").addEventListener("click",function(e){
+    var target=e.target.closest("[data-action]");
+    if(target)handleBoardAction(target);
+  });
+  el("messageWall").addEventListener("keydown",function(e){
+    if(e.key==="Enter"&&!e.shiftKey&&e.target.matches("[data-comment-input]")){
+      e.preventDefault();
+      var btn=e.target.parentElement.querySelector('[data-action="add-comment"]');
+      if(btn)handleBoardAction(btn);
+    }
+  });
+  if(BOARD)BOARD.subscribe(function(){
+    if(state&&state.finished)renderWall();
+  });
 
   el("toggleLogBtn").addEventListener("click",function(){
     var log=el("lifeLog"),hidden=log.style.display==="none";
