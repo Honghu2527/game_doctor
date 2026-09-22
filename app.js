@@ -21,6 +21,8 @@
   var rollingScore=null;
   var scoreLocked=false;
   var pendingName="";
+  var schoolLevelFilter="all";
+  var schoolSearchQuery="";
 
   var statKeys=["knowledge","energy","mental","money","research","reputation"];
   var statNames={knowledge:"知识",energy:"体力",mental:"心理",money:"金钱",research:"科研",reputation:"声望"};
@@ -118,8 +120,13 @@
 
   function eligibleSchools(score){
     var all=SCHOOL_DATA.schools.filter(function(s){return score>=s.minScore;});
-    all.sort(function(a,b){return b.minScore-a.minScore;});
-    return all.slice(0,14);
+    all.sort(function(a,b){
+      if((a.educationLevel||"本科")!==(b.educationLevel||"本科")){
+        return (a.educationLevel||"本科")==="本科"?-1:1;
+      }
+      return b.minScore-a.minScore;
+    });
+    return all;
   }
 
   function stars(n){
@@ -128,13 +135,20 @@
     return out;
   }
 
-  function showSchoolSelection(){
-    if(!scoreLocked)return;
-    showOnly("schoolScreen");
-    el("schoolScore").textContent=rollingScore;
-    var band=getBand(rollingScore);
-    el("bandCard").innerHTML="<strong>"+escapeHtml(band.label)+"</strong><span>"+escapeHtml(band.note)+"</span>";
-    var list=eligibleSchools(rollingScore);
+  function renderSchoolGrid(){
+    var list=eligibleSchools(rollingScore).filter(function(s){
+      var level=s.educationLevel||"本科";
+      if(schoolLevelFilter!=="all"&&level!==schoolLevelFilter)return false;
+      if(!schoolSearchQuery)return true;
+      var hay=(s.name+" "+s.city+" "+(s.program||"")+" "+(s.traits||[]).join(" ")).toLowerCase();
+      return hay.indexOf(schoolSearchQuery.toLowerCase())>=0;
+    });
+
+    el("schoolResultCount").textContent="符合当前分数："+list.length+" 所";
+    if(!list.length){
+      el("schoolGrid").innerHTML="<div class=\"school-empty\">没有匹配的学校。可以切换本科/专科筛选或修改搜索词。</div>";
+      return;
+    }
 
     el("schoolGrid").innerHTML=list.map(function(s){
       var p=profileForSchool(s);
@@ -145,7 +159,7 @@
         "<h3>"+escapeHtml(s.name)+"</h3>"+
         "<p>"+escapeHtml(s.flavor)+"</p>"+
         "<div class=\"school-tags\">"+p.tags.slice(0,3).map(function(t){return "<span>"+escapeHtml(t)+"</span>";}).join("")+"</div>"+
-        "<div class=\"school-opportunity\">机会密度 "+stars(p.opportunity)+" · 临床入口 "+stars(p.clinicalAccess)+" · 国际/交叉 "+stars(p.global)+"</div>"+
+        "<div class=\"school-opportunity\">"+escapeHtml(s.program||"临床医学")+" · 机会密度 "+stars(p.opportunity)+" · 临床入口 "+stars(p.clinicalAccess)+"</div>"+
         "<div class=\"school-bottom\"><small>综合压力 "+stars(s.level)+"</small><b>选择这所学校 →</b></div>"+
       "</button>";
     }).join("");
@@ -153,6 +167,21 @@
     Array.prototype.forEach.call(document.querySelectorAll(".school-card"),function(card){
       card.addEventListener("click",function(){selectSchool(card.getAttribute("data-school"));});
     });
+  }
+
+  function showSchoolSelection(){
+    if(!scoreLocked)return;
+    showOnly("schoolScreen");
+    schoolLevelFilter="all";
+    schoolSearchQuery="";
+    el("schoolSearch").value="";
+    Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(btn){
+      btn.classList.toggle("active",btn.getAttribute("data-level")==="all");
+    });
+    el("schoolScore").textContent=rollingScore;
+    var band=getBand(rollingScore);
+    el("bandCard").innerHTML="<strong>"+escapeHtml(band.label)+"</strong><span>"+escapeHtml(band.note)+"</span>";
+    renderSchoolGrid();
     window.scrollTo({top:0,behavior:"smooth"});
   }
 
@@ -830,6 +859,20 @@
     el("restartBtn").hidden=true;refreshContinue();
     window.scrollTo({top:0,behavior:"smooth"});
   }
+
+  el("schoolSearch").addEventListener("input",function(){
+    schoolSearchQuery=this.value.trim();
+    renderSchoolGrid();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(btn){
+    btn.addEventListener("click",function(){
+      schoolLevelFilter=btn.getAttribute("data-level")||"all";
+      Array.prototype.forEach.call(document.querySelectorAll(".filter-btn"),function(x){
+        x.classList.toggle("active",x===btn);
+      });
+      renderSchoolGrid();
+    });
+  });
 
   el("startBtn").addEventListener("click",beginGaokao);
   el("rollBtn").addEventListener("click",startRolling);
