@@ -29,7 +29,7 @@
         if(settled)return;
         settled=true;
         if(ad.offClose)ad.offClose(done);
-        resolve({completed:!!(res&&res.isEnded),provider:"wechat"});
+        resolve({completed:res===undefined||!!(res&&res.isEnded),provider:"wechat"});
       }
       if(ad.onClose)ad.onClose(done);
       Promise.resolve(ad.show()).catch(function(){
