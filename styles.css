@@ -75,3 +75,58 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
   .status-grid{grid-template-columns:repeat(3,1fr)}.ending-stats{grid-template-columns:repeat(2,1fr)}
   .panel{border-radius:20px}.scene-text{font-size:16px}
 }
+
+
+/* v0.2 onboarding, gaokao and school selection */
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+.gaokao-panel,.school-panel,.letter-panel{max-width:860px}
+.gaokao-panel h2,.school-panel h2,.letter-panel h2{font-family:Georgia,"Noto Serif SC",serif;font-size:clamp(28px,5vw,40px);margin:18px 0 10px}
+.score-machine{margin:30px auto 22px;width:min(420px,100%);text-align:center;padding:26px;border-radius:24px;background:linear-gradient(180deg,#1c2b30,#10191d);color:white;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 20px 50px rgba(23,35,40,.16)}
+.score-label{font-size:12px;letter-spacing:.18em;opacity:.62}
+.score-display{font-variant-numeric:tabular-nums;font-size:clamp(72px,15vw,122px);font-weight:900;line-height:1;margin:12px 0 4px;letter-spacing:-.06em;text-shadow:0 0 24px rgba(255,255,255,.14)}
+.score-display.rolling{animation:scorePulse .24s infinite alternate}
+.score-total{opacity:.55;font-weight:800}
+@keyframes scorePulse{from{transform:scale(.99);filter:blur(.2px)}to{transform:scale(1.015)}}
+.score-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.danger-btn{border:0;border-radius:14px;cursor:pointer;background:#222;color:#fff;padding:14px 20px;font-weight:900}
+.danger-btn:not(:disabled){background:#a63e43;box-shadow:0 8px 22px rgba(166,62,67,.18)}
+.danger-btn:disabled{opacity:.35;cursor:not-allowed}
+.score-result{margin-top:22px;border:1px solid #d8cbb9;background:#fffaf1;border-radius:17px;padding:17px;line-height:1.65}
+.score-result strong{color:var(--accent);font-size:19px}
+.score-result .next-score-btn{margin-top:12px}
+.score-pill{display:flex;align-items:baseline;gap:8px;background:#162429;color:#fff;padding:10px 15px;border-radius:15px}
+.score-pill span{font-size:11px;opacity:.65}.score-pill strong{font-size:28px}
+.band-card{border-left:5px solid var(--accent);background:#f7efe4;padding:16px 18px;border-radius:0 16px 16px 0;margin:19px 0 10px}
+.band-card strong{display:block;font-size:19px;margin-bottom:4px}.band-card span{color:var(--muted);line-height:1.55}
+.school-disclaimer{font-size:12px;color:#8a7d70;line-height:1.65;margin:10px 0 18px}
+.school-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.school-card{border:1px solid var(--line);background:var(--paper-2);border-radius:18px;padding:17px;text-align:left;cursor:pointer;transition:.18s;position:relative;overflow:hidden}
+.school-card:hover{transform:translateY(-2px);border-color:var(--accent-2);box-shadow:0 12px 28px rgba(31,97,89,.08)}
+.school-card .school-city{font-size:11px;color:var(--muted);letter-spacing:.05em}
+.school-card h3{font-size:18px;margin:5px 0 7px}
+.school-card p{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 10px}
+.school-tags{display:flex;flex-wrap:wrap;gap:6px}
+.school-tags span,.difficulty-stars{font-size:11px;background:#edf2ef;color:#49615b;padding:5px 7px;border-radius:999px}
+.school-card .school-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;border-top:1px dashed #dfd6c9;padding-top:10px}
+.school-card .school-bottom small{color:var(--muted)}
+.school-card .school-bottom b{font-size:12px;color:var(--accent)}
+.letter-panel{text-align:center}
+.admission-letter{position:relative;text-align:left;background:#fffdf7;border:10px double #9a2f32;padding:clamp(25px,6vw,58px);box-shadow:0 18px 45px rgba(88,42,34,.12);overflow:hidden}
+.letter-corner{position:absolute;right:18px;top:14px;font-size:10px;letter-spacing:.18em;color:#b8a48e}
+.letter-school{text-align:center;font-family:Georgia,"Noto Serif SC",serif;font-weight:800;font-size:clamp(20px,4vw,30px);color:#7f2e35;margin-top:10px}
+.letter-title{text-align:center;font-family:Georgia,"Noto Serif SC",serif;font-size:clamp(34px,7vw,58px);letter-spacing:.22em;margin:24px 0 30px;color:#971f2b;font-weight:900}
+.letter-body{font-family:Georgia,"Noto Serif SC",serif;font-size:17px;line-height:2.1;color:#342d27}
+.letter-body p{margin:0 0 10px}
+.letter-meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:28px;color:#6f6256;font-size:13px}
+.fake-seal{position:absolute;right:8%;bottom:12%;width:92px;height:92px;border:5px double #b4272f;border-radius:50%;display:grid;place-items:center;color:#b4272f;font-size:25px;font-weight:900;transform:rotate(-12deg);opacity:.72}
+.school-effect-summary{text-align:left;border:1px solid var(--line);border-radius:16px;background:#fffaf2;padding:15px 17px;margin:16px 0;color:#5b5e5e;line-height:1.7;font-size:13px}
+.career-strip{display:grid;grid-template-columns:2fr .7fr 1fr;gap:10px;margin-bottom:10px}
+.career-strip>div{border:1px solid rgba(87,74,61,.12);background:rgba(255,255,255,.7);border-radius:14px;padding:10px 12px}
+.career-strip span{display:block;font-size:10px;color:var(--muted);margin-bottom:3px}.career-strip strong{font-size:13px}
+.type-chip{padding:7px 10px;border-radius:999px;background:#f3e4d5;color:#79522e;font-size:12px;font-weight:900}
+.type-chip.side{background:#f8e9ef;color:#8a365c}.type-chip.random{background:#efe9f8;color:#65478a}
+@media(max-width:760px){
+  .school-grid{grid-template-columns:1fr}
+  .career-strip{grid-template-columns:1fr 1fr}.career-strip>div:first-child{grid-column:1/-1}
+  .letter-title{letter-spacing:.12em}.fake-seal{width:74px;height:74px;font-size:20px}
+}
