@@ -1,0 +1,26 @@
+name: Build WeChat Mini Program
+
+on:
+  push:
+    branches:
+      - wechat-miniapp
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build miniprogram
+        run: npm run build:mp
+      - name: Upload miniprogram artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-doctor-wechat-dist
+          path: dist/mp
+          if-no-files-found: error
