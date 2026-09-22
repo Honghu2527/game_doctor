@@ -1077,41 +1077,50 @@ body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets
 body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/dermatology.svg")}
 
 
-/* v0.9.4 background hotfix — do not stretch the low-resolution AI collage */
+/* v0.9.5 real AI medical backgrounds stored in GitHub */
 .stage-backdrop{
   background-size:cover!important;
   background-repeat:no-repeat!important;
+  background-position:center center!important;
   image-rendering:auto;
-  filter:saturate(.98) contrast(1.02);
+  filter:saturate(1.02) contrast(1.03);
 }
 
-/* Use the stage-specific vector scenes until real high-resolution AI images are uploaded */
-body[data-stage-bg="undergrad"] .stage-backdrop{background-image:url("assets/bg/undergrad_library.svg")!important;background-position:center 25%!important}
-body[data-stage-bg="internal"] .stage-backdrop{background-image:url("assets/bg/master_internal.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="surgery"] .stage-backdrop{background-image:url("assets/bg/master_surgery.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="pediatrics"] .stage-backdrop{background-image:url("assets/bg/pediatrics.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="obgyn"] .stage-backdrop{background-image:url("assets/bg/obgyn.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="emergency"] .stage-backdrop{background-image:url("assets/bg/emergency.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="anesthesia"] .stage-backdrop{background-image:url("assets/bg/anesthesia.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="radiology"] .stage-backdrop{background-image:url("assets/bg/radiology.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="nuclear"] .stage-backdrop{background-image:url("assets/bg/nuclear.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="pathology"] .stage-backdrop{background-image:url("assets/bg/pathology.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="psychiatry"] .stage-backdrop{background-image:url("assets/bg/psychiatry.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="general"] .stage-backdrop{background-image:url("assets/bg/general.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="oncology"] .stage-backdrop{background-image:url("assets/bg/oncology.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets/bg/ophthalmology.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/dermatology.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="research"] .stage-backdrop{background-image:url("assets/bg/research_lab.svg")!important;background-position:center 22%!important}
-body[data-stage-bg="hospital"] .stage-backdrop{background-image:url("assets/bg/career_hospital.svg")!important;background-position:center 22%!important}
+/* Real AI images committed under assets/bg/ */
+body[data-stage-bg="undergrad"] .stage-backdrop{background-image:url("assets/bg/undergrad_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="internal"] .stage-backdrop{background-image:url("assets/bg/internal_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="surgery"] .stage-backdrop{background-image:url("assets/bg/surgery_ai.webp?v=095")!important;background-position:center 44%!important}
+body[data-stage-bg="pediatrics"] .stage-backdrop{background-image:url("assets/bg/pediatrics_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="radiology"] .stage-backdrop{background-image:url("assets/bg/radiology_ai.webp?v=095")!important;background-position:center 44%!important}
+body[data-stage-bg="nuclear"] .stage-backdrop{background-image:url("assets/bg/nuclear_ai.webp?v=095")!important;background-position:center 44%!important}
+body[data-stage-bg="pathology"] .stage-backdrop{background-image:url("assets/bg/pathology_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="research"] .stage-backdrop{background-image:url("assets/bg/research_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="overseas"] .stage-backdrop{background-image:url("assets/bg/overseas_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="hospital"] .stage-backdrop{background-image:url("assets/bg/career_hospital_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="ending"] .stage-backdrop{background-image:url("assets/bg/ending_ai.webp?v=095")!important;background-position:center 50%!important}
+
+/* Temporary photo fallbacks for specialties whose dedicated AI scene is still being generated */
+body[data-stage-bg="obgyn"] .stage-backdrop{background-image:url("assets/bg/surgery_ai.webp?v=095")!important;background-position:center 44%!important}
+body[data-stage-bg="emergency"] .stage-backdrop{background-image:url("assets/bg/internal_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="anesthesia"] .stage-backdrop{background-image:url("assets/bg/surgery_ai.webp?v=095")!important;background-position:center 44%!important}
+body[data-stage-bg="psychiatry"] .stage-backdrop{background-image:url("assets/bg/internal_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="general"] .stage-backdrop{background-image:url("assets/bg/internal_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="oncology"] .stage-backdrop{background-image:url("assets/bg/research_ai.webp?v=095")!important;background-position:center 42%!important}
+body[data-stage-bg="ophthalmology"] .stage-backdrop{background-image:url("assets/bg/radiology_ai.webp?v=095")!important;background-position:center 44%!important}
+body[data-stage-bg="dermatology"] .stage-backdrop{background-image:url("assets/bg/pathology_ai.webp?v=095")!important;background-position:center 42%!important}
 
 .stage-backdrop::before{
   background:
-    linear-gradient(90deg,rgba(15,28,31,.62) 0%,rgba(15,28,31,.38) 42%,rgba(15,28,31,.10) 80%,rgba(15,28,31,.04) 100%),
-    linear-gradient(180deg,rgba(16,29,32,.02) 0%,rgba(16,29,32,.12) 60%,#eee8dd 100%)!important;
+    linear-gradient(90deg,rgba(13,25,28,.70) 0%,rgba(13,25,28,.48) 34%,rgba(13,25,28,.18) 70%,rgba(13,25,28,.07) 100%),
+    linear-gradient(180deg,rgba(10,22,25,.02) 0%,rgba(10,22,25,.10) 58%,#eee8dd 100%)!important;
 }
 
 @media(max-width:760px){
-  .stage-backdrop{height:560px;background-size:cover!important}
+  .stage-backdrop{
+    height:560px;
+    background-size:cover!important;
+    background-position:58% center!important;
+  }
   .topbar{min-height:245px}
 }
 /* v0.9.1 ending blessing */
@@ -1179,4 +1188,4 @@ body[data-stage-bg="hospital"] .stage-backdrop{background-image:url("assets/bg/c
   .blessing-actions button{width:100%}
 }
 
-/* build:v0.9.4-background-hotfix */
+/* build:v0.9.5-real-ai-backgrounds */
