@@ -97,12 +97,14 @@
     if(/^fresh_|white_coat|key_undergrad|ug_|clinical_exposure|key_graduation/.test(scene))return "undergrad";
     if(/^edu_|grad_exam|exam_fail|recommended/.test(scene))return "undergrad";
     if(state.flags.has("academicMaster")||/^phd_|direct_phd/.test(scene))return "research";
-    if(spec==="surgery"||spec==="obgyn")return "surgery";
-    if(spec==="radiology")return "radiology";
-    if(spec==="nuclear")return "nuclear";
-    if(spec==="pathology")return "research";
+    var specialtyBg={
+      internal:"internal",surgery:"surgery",pediatrics:"pediatrics",obgyn:"obgyn",emergency:"emergency",
+      anesthesia:"anesthesia",radiology:"radiology",nuclear:"nuclear",pathology:"pathology",psychiatry:"psychiatry",
+      general:"general",oncology:"oncology",ophthalmology:"ophthalmology",dermatology:"dermatology"
+    };
+    if(spec&&specialtyBg[spec])return specialtyBg[spec];
     if(state.flags.has("clinicalMaster")||/^resident_|job_choice|young_attending|career_|key_midcareer|promotion|director/.test(scene)){
-      return spec==="internal"?"internal":"hospital";
+      return "hospital";
     }
     return "undergrad";
   }
@@ -143,6 +145,12 @@
     if(/^college_/.test(scene)){
       var collegeNext=/upgrade/.test(scene)?"本科衔接 / 实践就业":"专升本 / 基层实践";
       return {current:"医学专科路线",next:collegeNext,steps:[["出生","done"],["高考","done"],["医学专科","current"],["升学/实践","future"]]};
+    }
+    if(/^edu_master/.test(scene)){
+      return {current:"硕士申请 · "+((state.eduApplication&&state.eduApplication.school&&state.eduApplication.school.name)||"选择目标院校"),next:"专业选择 / 准备 / 复试 / 查询录取",steps:[["本科","done"],["目标院校","current"],["专业与准备","future"],["录取结果","future"]]};
+    }
+    if(/^edu_phd/.test(scene)){
+      return {current:"博士申请 · "+((state.eduApplication&&state.eduApplication.school&&state.eduApplication.school.name)||"选择目标院校"),next:"学科 / 研究计划 / 面试 / 查询录取",steps:[["硕士/直博资格","done"],["博士院校","current"],["研究计划","future"],["录取结果","future"]]};
     }
     if(/key_graduation|grad_exam|exam_fail|recommended_postgrad|specialty_select/.test(scene)){
       return {current:"升学与科室分流",next:"专硕并轨 / 学硕科研 / 直博 / 直接规培",steps:[["本科","done"],["毕业","done"],["升学分流","current"],["科室选择","future"]]};
