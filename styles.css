@@ -178,3 +178,14 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
   .career-strip{grid-template-columns:1fr 1fr}
   .career-strip>div:first-child{grid-column:1/-1}
 }
+
+
+/* v0.4.1 multi-step application flow */
+.type-chip.application{background:#edf2ff;color:#405b9b}
+.type-chip.success{background:#e7f5eb;color:#2f6d43}
+.type-chip.fail{background:#f8e9e9;color:#8b4242}
+.story-panel.opportunity-scene .choices{margin-top:24px}
+.story-panel.opportunity-scene .choice-btn{position:relative}
+.story-panel.opportunity-scene .choice-btn::after{
+  content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:99px;background:rgba(52,91,132,.18)
+}
