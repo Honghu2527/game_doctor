@@ -929,7 +929,7 @@
   function isCompetitiveScene(scene,e){
     scene=scene||state&&state.scene||"";
     e=e||state&&allEvents()[scene]||null;
-    if(/^(edu_master|edu_phd|grad_exam|exam_fail|recommended_postgrad|job_)/.test(scene))return true;
+    if(/^(edu_master|edu_phd|grad_exam|exam_fail|recommended_postgrad|job_|research_job_competition)/.test(scene))return true;
     if(e&&["educationSchool","educationApply","educationResult","jobMarket","jobResult"].indexOf(e.type)>=0)return true;
     return false;
   }
@@ -1100,7 +1100,7 @@
         grantItem(id,1);
         state.adRewardsClaimed=(state.adRewardsClaimed||0)+1;
         if(autoUse)useItem(id,{closeCrisis:true});
-        else{saveState();renderInventory();openSupply();}
+        else{saveState();renderInventory();}
       }else{
         addLog("广告奖励","未完整观看，本次不发放道具。");
       }
@@ -1109,6 +1109,7 @@
     }).then(function(){
       rewardBusy=false;
       if(button){button.disabled=false;button.textContent=oldText||"获取";}
+      if(!autoUse&&!el("supplyOverlay").hidden)openSupply();
       saveState();
     });
   }
