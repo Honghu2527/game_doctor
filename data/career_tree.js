@@ -324,7 +324,7 @@ window.CAREER_DATA = {
       text:"有没有硕士、有没有博士，会影响你进入这个阶段的年龄和履历，但夜班本身不会因此消失。",
       choices:[
         {text:"每个轮转科室都认真学",sub:"基本功最稳，体力消耗最大。",effects:{knowledge:9,reputation:5,energy:-8},flags:["solidResident"],next:"resident_night"},
-        {text:"提前锁定目标专科",sub:"人脉和方向更集中。",effects:{knowledge:6,reputation:6,research:2},flags:["specialtyFocus"],next:"resident_night"},
+        {text:"在已选科室争取更多核心轮转 / 操作机会",sub:"你已经完成择科，现在要把方向转化成真正的病例、操作与导师资源。",effects:{knowledge:6,reputation:6,research:2,energy:-3},flags:["specialtyFocus"],next:"resident_night"},
         {text:"优先保持可持续状态",sub:"避免过早 burnout。",effects:{mental:8,energy:5,knowledge:3},flags:["selfCare"],next:"resident_night"}
       ]
     },
