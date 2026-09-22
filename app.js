@@ -5,6 +5,7 @@
   var SCHOOL_DATA=window.SCHOOL_DATA;
   var SCHOOL_SYSTEM=window.SCHOOL_SYSTEM;
   var CAREER_DATA=window.CAREER_DATA;
+  var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var DIFFICULTIES=DATA.difficulties;
   var CAREER_EVENTS=CAREER_DATA.events;
   var SIDE_EVENTS=DATA.sideEvents;
@@ -298,6 +299,11 @@
   function metricValue(k){
     if(state.stats&&state.stats[k]!==undefined)return state.stats[k];
     if(state.talents&&state.talents[k]!==undefined)return state.talents[k];
+    var p=currentProfile();
+    if(k==="globalAccess")return (p.global||1)*18;
+    if(k==="schoolOpportunity")return (p.opportunity||1)*18;
+    if(k==="clinicalAccess")return (p.clinicalAccess||1)*18;
+    if(k==="schoolCompetition")return (p.competition||1)*18;
     return 50;
   }
 
@@ -404,6 +410,13 @@
     };
   }
 
+  function activeOpportunityEvent(){
+    if(!state||!state.activeOpportunity||!OPPORTUNITY_DATA)return null;
+    var flow=OPPORTUNITY_DATA.flows[state.activeOpportunity.id];
+    if(!flow)return null;
+    return flow.steps[state.activeOpportunity.step]||null;
+  }
+
   function allEvents(){
     var merged={};
     Object.keys(CAREER_EVENTS).forEach(function(k){merged[k]=CAREER_EVENTS[k];});
@@ -411,6 +424,8 @@
     Object.keys(ECO_EVENTS).forEach(function(k){merged[k]=ECO_EVENTS[k];});
     var sig=signatureEventForSchool();
     if(sig)merged.__SIGNATURE__=sig;
+    var opp=activeOpportunityEvent();
+    if(opp)merged.__OPPORTUNITY_FLOW__=opp;
     return merged;
   }
 
@@ -469,6 +484,23 @@
       addLog("机会押注","你把本轮唯一申请名额用在了「"+choice.application+"」。其他选项关闭。");
     }
 
+    var mappedFlow=choice.application&&OPPORTUNITY_DATA&&OPPORTUNITY_DATA.byApplication[choice.application];
+    if(mappedFlow){
+      var flow=OPPORTUNITY_DATA.flows[mappedFlow];
+      if(flow){
+        addLog("申请启动","「"+choice.application+"」不会立刻判定结果，你将进入完整申请流程。");
+        state.activeOpportunity={
+          id:mappedFlow,
+          step:flow.start,
+          returnNext:flow.returnNext||choice.next
+        };
+        state.scene="__OPPORTUNITY_FLOW__";
+        saveState();render();
+        window.scrollTo({top:0,behavior:"smooth"});
+        return;
+      }
+    }
+
     var success=null;
     if(choice.chance)success=resolveChance(choice.chance);
 
@@ -476,6 +508,27 @@
     addLog(current.stage,current.title+" → "+choice.text+(effects?"（"+effects+"）":""));
 
     if(state.stats.mental<=0||state.stats.energy<=0){showEnding("burnout");return;}
+
+    if(state.scene==="__OPPORTUNITY_FLOW__"&&state.activeOpportunity){
+      var flowState=state.activeOpportunity;
+      if(choice.endFlow){
+        var returnNext=flowState.returnNext;
+        addLog("机会流程结束","这次申请经历结束，人生继续向前。");
+        state.activeOpportunity=null;
+        state.scene=returnNext;
+      }else{
+        var nextStep=choice.nextStep;
+        if(success===true&&choice.successStep)nextStep=choice.successStep;
+        if(success===false&&choice.failStep)nextStep=choice.failStep;
+        if(nextStep){
+          state.activeOpportunity.step=nextStep;
+          state.scene="__OPPORTUNITY_FLOW__";
+        }
+      }
+      saveState();render();
+      window.scrollTo({top:0,behavior:"smooth"});
+      return;
+    }
 
     var next=choice.next;
     if(success===true&&choice.successNext)next=choice.successNext;
@@ -496,6 +549,10 @@
 
   function sceneProgress(){
     var e=allEvents()[state.scene];
+    if(state.activeOpportunity){
+      var anchor=ORDER.indexOf(state.activeOpportunity.returnNext);
+      return Math.round((Math.max(1,anchor)/ORDER.length)*100);
+    }
     if(e&&["side","random","school"].indexOf(e.type)>=0&&state.pendingNext){
       var p=ORDER.indexOf(state.pendingNext);
       return Math.round((Math.max(1,p)/ORDER.length)*100);
@@ -528,13 +585,13 @@
     el("sceneText").textContent=e.text;
     el("progressBar").style.width=sceneProgress()+"%";
 
-    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":"主线";
+    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":"主线";
     el("typeChip").textContent=typeName;
-    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":"");
+    el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":"");
 
     var panel=document.querySelector(".story-panel");
     panel.classList.toggle("key-scene",!!e.critical);
-    panel.classList.toggle("opportunity-scene",e.type==="opportunity");
+    panel.classList.toggle("opportunity-scene",["opportunity","application","resultSuccess","resultFail"].indexOf(e.type)>=0);
 
     el("criticalBanner").hidden=!e.critical;
     if(e.critical){
@@ -542,14 +599,18 @@
       el("criticalText").textContent=e.warning||"这个选择会改变后续路线。";
     }
 
-    el("opportunityBanner").hidden=e.type!=="opportunity";
-    if(e.type==="opportunity"){
-      el("opportunityText").textContent=e.warning||"本轮只能选择一个机会申请。";
-    }
+    var isOpp=["opportunity","application","resultSuccess","resultFail"].indexOf(e.type)>=0;
+    el("opportunityBanner").hidden=!isOpp;
+    if(e.type==="opportunity")el("opportunityText").textContent=e.warning||"本轮只能选择一个机会申请。";
+    if(e.type==="application")el("opportunityText").textContent="申请不会一步出结果。你的每一步准备都会影响后续属性、材料质量和最终成功率。";
+    if(e.type==="resultSuccess")el("opportunityText").textContent="申请成功只是新的分岔口：你接下来如何使用这个机会，会带来不同收益。";
+    if(e.type==="resultFail")el("opportunityText").textContent="申请失败不会把之前的准备清零。你可以调整、转投、重试或改变路线。";
 
     if(e.type==="school")el("effectHint").textContent="这是 "+school.name+" 的院校专属事件；换学校可能完全不会出现。";
     else if(e.type==="key")el("effectHint").textContent="关键节点不会随机替你做决定。请根据你的当前属性、天赋和想走的路线选择。";
-    else if(e.type==="opportunity")el("effectHint").textContent="成功率不是固定抽奖：你的知识、科研、英语、沟通、动手与既往经历会参与判定。";
+    else if(e.type==="opportunity")el("effectHint").textContent="先选择申请哪一个机会；选定后会进入多步骤申请流程，不会立刻出结果。";
+    else if(e.type==="application")el("effectHint").textContent="你的项目选择、推荐信、材料准备和面试策略会改变后面的成功率与结果。";
+    else if(e.type==="resultSuccess"||e.type==="resultFail")el("effectHint").textContent="结果已经确定，但你对成功或失败的后续处理仍然会改变人生路线。";
     else if(["side","random"].indexOf(e.type)>=0)el("effectHint").textContent="完成支线后会回到原来的主线，但留下的属性和隐藏经历会继续影响后面。";
     else el("effectHint").textContent="不同学校、早期路线和过去的关键选择，会让后面的可选项逐渐不同。";
 
@@ -646,6 +707,7 @@
     state.pendingNext=raw.pendingNext||null;
     state.profileId=raw.profileId||profileIdForSchool(schoolById(raw.schoolId));
     state.applications=raw.applications||{};
+    state.activeOpportunity=raw.activeOpportunity||null;
     state.route=raw.route||"本科·未分流";
     state.signaturePending=!!raw.signaturePending;
     if(!raw.talents)state.talents=generateTalents(raw.score||620,schoolById(raw.schoolId),currentProfile());
