@@ -120,3 +120,69 @@
 - 博后 / 临床职业路线
 
 政策、招生专业和职业资格在正式版中应独立做成可更新的数据源，不写死在剧情引擎中。
+
+
+## v0.7 社区留言墙正式版
+
+当前 Web 版使用 `board_adapter.js`，UI 与数据层已经分离。正式微信小程序只需替换 Adapter，不应重写留言 UI 逻辑。
+
+### 推荐数据表
+
+messages:
+- id
+- owner_id
+- display_name
+- message_text
+- school_label
+- ending_label
+- created_at
+- like_count
+- comment_count
+- moderation_status
+
+message_likes:
+- message_id
+- user_id
+- created_at
+- 唯一索引：(message_id, user_id)
+
+message_comments:
+- id
+- message_id
+- owner_id
+- display_name
+- comment_text
+- created_at
+- moderation_status
+
+### 权限规则
+
+- 创建留言：已获得匿名/登录用户标识即可
+- 删除留言：仅 `message.owner_id == current_user.id`
+- 点赞：任意用户；同一用户同一留言只能存在一条 like
+- 创建评论：任意用户
+- 删除评论：
+  - `comment.owner_id == current_user.id`
+  - 或 `parent_message.owner_id == current_user.id`
+- 任何人不能直接修改别人留言正文
+- 后台管理员保留审核、隐藏、封禁权限
+
+### 实时更新
+
+小程序正式版建议监听 messages / likes / comments 变化：
+1. 最新 10 条查询按 created_at desc
+2. 收到新留言事件后插入滚动队列首部
+3. 保留最多 10 条并重新开始滚动
+4. 全部留言分页加载，避免用户量大后一次加载所有数据
+5. 点赞数与评论数使用服务端计数或事务，避免并发覆盖
+
+### 规模化要求
+
+- 最新 10 条：实时订阅
+- 全部留言：分页 20 条/页
+- 评论：按需展开与分页
+- 文本内容审核
+- 举报
+- 频率限制
+- 删除采用软删除更利于审计
+- 热门排序需对 like_count 建索引
