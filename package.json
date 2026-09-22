@@ -1,0 +1,24 @@
+{
+  "name": "game-doctor-wechat",
+  "version": "0.11.4",
+  "private": true,
+  "description": "医学生养成记录 - 微信小程序构建",
+  "scripts": {
+    "mp": "npm run build:mp",
+    "build:mp": "cross-env NODE_ENV=production webpack --config build/webpack.mp.config.js --progress"
+  },
+  "dependencies": {
+    "kbone-tool": "^0.0.7"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "css-loader": "^5.2.4",
+    "html-to-js-loader": "^0.0.3",
+    "mini-css-extract-plugin": "^1.5.0",
+    "mp-webpack-plugin": "latest",
+    "replace-global-var-loader": "^0.0.2",
+    "webpack": "^5.35.1",
+    "webpack-cli": "^4.6.0"
+  }
+}
