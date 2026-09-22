@@ -5,13 +5,15 @@
   var SCHOOL_DATA=window.SCHOOL_DATA;
   var SCHOOL_SYSTEM=window.SCHOOL_SYSTEM;
   var CAREER_DATA=window.CAREER_DATA;
+  var COLLEGE_DATA=window.COLLEGE_DATA;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var DIFFICULTIES=DATA.difficulties;
   var CAREER_EVENTS=CAREER_DATA.events;
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
-  var ORDER=CAREER_DATA.order;
-  var SAVE_KEY="doctor-life-sim-v04";
+  var ORDER=CAREER_DATA.order.concat(COLLEGE_DATA?COLLEGE_DATA.order:[]);
+  var SAVE_KEY="doctor-life-sim-v05";
+  var BOARD_KEY="doctor-life-message-wall-v1";
 
   var state=null;
   var selectedDifficulty="normal";
@@ -44,7 +46,7 @@
   }
 
   function schoolById(id){return SCHOOL_DATA.schools.find(function(s){return s.id===id;});}
-  function profileIdForSchool(school){return SCHOOL_SYSTEM.schoolProfiles[school.id]||"growth";}
+  function profileIdForSchool(school){return school.profileId||SCHOOL_SYSTEM.schoolProfiles[school.id]||"growth";}
   function profileForSchool(school){return SCHOOL_SYSTEM.profiles[profileIdForSchool(school)];}
   function currentSchool(){return state?schoolById(state.schoolId):null;}
   function currentProfile(){var s=currentSchool();return s?profileForSchool(s):SCHOOL_SYSTEM.profiles.growth;}
@@ -136,8 +138,9 @@
 
     el("schoolGrid").innerHTML=list.map(function(s){
       var p=profileForSchool(s);
+      var level=s.educationLevel||"本科";
       return "<button class=\"school-card\" data-school=\""+s.id+"\">"+
-        "<div class=\"school-city\">"+escapeHtml(s.city)+" · 游戏门槛 "+s.minScore+"+</div>"+
+        "<div class=\"school-city\"><span class=\"education-badge "+(level==="专科"?"college":"")+"\">"+escapeHtml(level)+"</span>"+escapeHtml(s.city)+" · 游戏门槛 "+s.minScore+"+</div>"+
         "<div class=\"profile-label\">"+escapeHtml(p.name)+"</div>"+
         "<h3>"+escapeHtml(s.name)+"</h3>"+
         "<p>"+escapeHtml(s.flavor)+"</p>"+
@@ -214,7 +217,7 @@
       stats:stats,
       flags:new Set(),
       scene:"__SIGNATURE__",
-      pendingNext:CAREER_DATA.entryByProfile[profileId]||"fresh_growth",
+      pendingNext:(school.educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[profileId]||"fresh_growth"),
       visitedSide:new Set(),
       applications:{},
       route:"本科·未分流",
@@ -236,6 +239,9 @@
     el("letterSchoolInline").textContent=school.name;
     el("letterName").textContent=state.name;
     el("letterScore").textContent=state.score;
+    el("letterProgram").textContent="专业："+(school.program||"临床医学");
+    el("letterLevel").textContent="层次："+(school.educationLevel||"本科");
+    el("letterDuration").textContent="学制："+(school.duration||"游戏模拟");
     el("schoolEffectSummary").innerHTML=
       "<strong>学校会改变实际事件树：</strong><br>"+
       "综合压力 ×"+(school.pressure*profile.negativeScale).toFixed(2)+
@@ -403,9 +409,14 @@
     var s=currentSchool();
     if(!s)return null;
     var sig=SCHOOL_SYSTEM.signatures[s.id];
+    if(!sig&&s.signatureKind){
+      sig={kind:s.signatureKind,title:s.signatureTitle||"你的第一项院校机会",desc:s.signatureDesc||"这所学校给了你一个不同于其他平台的开局机会。"};
+    }
     if(!sig)return null;
     return {
-      stage:"院校专属 · "+s.name,year:"18-21岁",title:sig.title,type:"school",
+      stage:"院校专属 · "+s.name,
+      year:(s.educationLevel==="专科"?"18-19岁":"18-21岁"),
+      title:sig.title,type:"school",
       text:sig.desc,choices:signatureOptions(sig.kind)
     };
   }
@@ -420,6 +431,7 @@
   function allEvents(){
     var merged={};
     Object.keys(CAREER_EVENTS).forEach(function(k){merged[k]=CAREER_EVENTS[k];});
+    if(COLLEGE_DATA)Object.keys(COLLEGE_DATA.events).forEach(function(k){merged[k]=COLLEGE_DATA.events[k];});
     Object.keys(SIDE_EVENTS).forEach(function(k){merged[k]=SIDE_EVENTS[k];});
     Object.keys(ECO_EVENTS).forEach(function(k){merged[k]=ECO_EVENTS[k];});
     var sig=signatureEventForSchool();
@@ -432,7 +444,7 @@
   function genericSidePool(){
     var e=allEvents()[state.scene];
     var stage=(e&&e.stage)||"";
-    if(/本科|大一|白大褂/.test(stage))return ["side_love","side_health","side_competition","side_lab_failure","side_volunteer","side_parttime"];
+    if(/本科|大一|白大褂|医学专科|专科/.test(stage))return ["side_love","side_health","side_competition","side_volunteer","side_parttime"];
     if(/研究生|博士|海外升学/.test(stage))return ["side_lab_failure","side_authorship","side_rejection","side_love_distance","side_health"];
     if(/规培|住院|主治|职业|高级职称/.test(stage))return ["side_health","side_patient_thanks","side_night_food","side_parent_health","side_grant_reject"];
     return [];
@@ -537,7 +549,7 @@
     if(next==="__END__"){showEnding();return;}
 
     if(next==="__RETURN__"){
-      state.scene=state.pendingNext||CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth";
+      state.scene=state.pendingNext||((currentSchool()&&currentSchool().educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth"));
       state.pendingNext=null;
     }else if(!maybeEnterDetour(current,next)){
       state.scene=next;
@@ -565,7 +577,10 @@
   function render(){
     if(!state)return;
     var e=allEvents()[state.scene];
-    if(!e){state.scene=CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth";e=allEvents()[state.scene];}
+    if(!e){
+      state.scene=(currentSchool()&&currentSchool().educationLevel==="专科"&&COLLEGE_DATA)?COLLEGE_DATA.entry:(CAREER_DATA.entryByProfile[state.profileId]||"fresh_growth");
+      e=allEvents()[state.scene];
+    }
     var school=currentSchool(),profile=currentProfile();
 
     statKeys.forEach(function(k){
@@ -673,6 +688,87 @@
     return map[flag]||null;
   }
 
+  function highestEducationLabel(){
+    if(state.flags.has("phdDomestic")||state.flags.has("phdOverseas")||state.flags.has("directPhdOffer"))return "博士路线";
+    if(state.flags.has("clinicalMaster")||state.flags.has("academicMaster")||state.flags.has("recommended")||state.flags.has("masterOffer"))return "硕士路线";
+    if(state.flags.has("collegeUpgradeSuccess")||state.flags.has("collegeUpgradeSecondSuccess")||state.flags.has("lateUpgradeSuccess"))return "专科 → 本科衔接";
+    var s=currentSchool();
+    return s&&s.educationLevel==="专科"?"医学专科路线":"本科路线";
+  }
+
+  function successfulApplications(){
+    var map=[
+      ["majorScholarship","本科奖学金"],["ugExchange","海外暑研/交换"],["studentPI","本科科研项目"],["clinicalCompetition","临床技能竞赛"],
+      ["collegeScholarship","专科奖学金"],["collegePremiumIntern","优质医院实习"],["collegeUpgradeProgram","专升本强化计划"],["collegePrimaryProject","基层实践项目"],
+      ["masterScholarship","研究生奖学金"],["jointTraining","联合培养"],["keyProject","重点科研项目"],["excellentResident","临床优秀学员"],
+      ["phdJoint","博士联合培养"],["oralPresentation","国际会议口头报告"],["phdKeyProject","博士重点项目"],
+      ["youthGrant","青年基金"],["visitingScholar","海外访问"],["clinicalFellowship","临床进修"],["youngTalent","青年人才项目"]
+    ];
+    return map.filter(function(x){return state.flags.has(x[0]);}).map(function(x){return x[1];});
+  }
+
+  function renderJourney(){
+    var school=currentSchool(),wins=successfulApplications();
+    var items=[
+      ["起点",school?school.name:"—"],
+      ["学历层级",highestEducationLabel()],
+      ["主要路线",state.route||"—"],
+      ["关键机会",wins.length?wins.join("、"):"本轮没有拿到稀缺机会，但人生仍继续"],
+      ["培养生态",currentProfile().name],
+      ["高考",String(state.score||"—")+" 分"]
+    ];
+    el("endingJourney").innerHTML=items.map(function(x){
+      return "<div class=\"journey-item\"><span>"+escapeHtml(x[0])+"</span><strong>"+escapeHtml(x[1])+"</strong></div>";
+    }).join("");
+  }
+
+  function loadWall(){
+    try{
+      var raw=localStorage.getItem(BOARD_KEY);
+      return raw?JSON.parse(raw):[];
+    }catch(e){return [];}
+  }
+
+  function saveWall(list){
+    try{localStorage.setItem(BOARD_KEY,JSON.stringify(list.slice(0,30)));}catch(e){}
+  }
+
+  function renderWall(){
+    var list=loadWall().slice(0,10);
+    if(!list.length){
+      el("messageWall").innerHTML="<div class=\"wall-card\"><p>还没有留言。你可以成为这个设备上的第一位留言者。</p><div class=\"wall-meta\">网页版本地留言墙</div></div>";
+      return;
+    }
+    el("messageWall").innerHTML=list.map(function(m){
+      return "<div class=\"wall-card\"><p>"+escapeHtml(m.message)+"</p><div class=\"wall-meta\"><span>"+escapeHtml(m.author)+"</span><span>"+escapeHtml(m.school)+"</span><span>"+escapeHtml(m.ending)+"</span><span>"+escapeHtml(m.date)+"</span></div></div>";
+    }).join("");
+  }
+
+  function postLegacyMessage(){
+    if(!state||!state.finished)return;
+    var input=el("legacyMessage"),msg=input.value.trim();
+    if(!msg){
+      el("messageFeedback").hidden=false;
+      el("messageFeedback").textContent="先写下一句话再提交。";
+      return;
+    }
+    var school=currentSchool();
+    var list=loadWall();
+    list.unshift({
+      message:msg.slice(0,200),
+      author:state.name||"匿名医学生",
+      school:school?school.name:"未知起点",
+      ending:el("endingTitle").textContent||"医学人生",
+      date:new Date().toLocaleDateString("zh-CN")
+    });
+    saveWall(list);
+    input.value="";
+    el("messageCount").textContent="0 / 200";
+    el("messageFeedback").hidden=false;
+    el("messageFeedback").textContent="这句话已经留在当前设备的留言墙上。小程序版接入云数据库后，可以升级为所有玩家共享。";
+    renderWall();
+  }
+
   function showEnding(type){
     state.finished=true;
     var ending=type==="burnout"
@@ -686,6 +782,8 @@
     }).join("");
     var tags=Array.from(state.flags).map(humanFlag).filter(Boolean).slice(0,14);
     el("endingTags").innerHTML=tags.map(function(tag){return "<span class=\"ending-tag\">"+escapeHtml(tag)+"</span>";}).join("");
+    renderJourney();
+    renderWall();
     saveState();window.scrollTo({top:0,behavior:"smooth"});
   }
 
@@ -740,6 +838,11 @@
   el("restartBtn").addEventListener("click",reset);
   el("endingRestartBtn").addEventListener("click",reset);
   el("continueBtn").addEventListener("click",function(){restoreState(Storage.load());});
+  el("legacyMessage").addEventListener("input",function(){
+    el("messageCount").textContent=this.value.length+" / 200";
+  });
+  el("postMessageBtn").addEventListener("click",postLegacyMessage);
+
   el("toggleLogBtn").addEventListener("click",function(){
     var log=el("lifeLog"),hidden=log.style.display==="none";
     log.style.display=hidden?"grid":"none";
