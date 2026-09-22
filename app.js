@@ -35,6 +35,7 @@
   var boardSort="newest";
   var currentCrisisStat=null;
   var rewardBusy=false;
+  var pendingChoiceContinuation=null;
 
   var statKeys=["knowledge","energy","mental","money","research","reputation","english"];
   var statNames={knowledge:"知识",energy:"体力",mental:"心理",money:"金钱",research:"科研",reputation:"声望",english:"英语"};
@@ -837,6 +838,7 @@
       checkpoint:null,
       lastCheckpointScene:null,
       crisisWarned:{energy:false,mental:false},
+      crisisWarningVersion:2,
       adRewardsClaimed:0,
       hintScene:null,
       specialtyId:null,
@@ -1065,6 +1067,12 @@
     applyEffects(item.effect||{});
     if(id==="english_card"&&state.talents)state.talents.english=state.stats.english;
     addLog("使用道具","使用「"+item.name+"」"+(effectText(item.effect)?"（"+effectText(item.effect)+"）":"")+"。");
+    if(options.resumeFatal&&pendingChoiceContinuation){
+      closeCrisis();
+      saveState();
+      resumePendingChoice();
+      return true;
+    }
     if(options.closeCrisis)closeCrisis();
     saveState();render();
     return true;
@@ -1099,7 +1107,7 @@
       if(res&&res.completed){
         grantItem(id,1);
         state.adRewardsClaimed=(state.adRewardsClaimed||0)+1;
-        if(autoUse)useItem(id,{closeCrisis:true});
+        if(autoUse)useItem(id,{closeCrisis:true,resumeFatal:!!pendingChoiceContinuation});
         else{saveState();renderInventory();}
       }else{
         addLog("广告奖励","未完整观看，本次不发放道具。");
@@ -1150,6 +1158,7 @@
   function closeCrisis(){
     el("crisisOverlay").hidden=true;
     currentCrisisStat=null;
+    if(!pendingChoiceContinuation)el("crisisContinueBtn").textContent="我知道了，继续";
     if(el("supplyOverlay").hidden)document.body.classList.remove("modal-open");
   }
 
@@ -1949,8 +1958,15 @@
     var effects=effectText(choice.effects);
     addLog(current.stage,current.title+" → "+choice.text+(effects?"（"+effects+"）":""));
 
-    if(state.stats.mental<=0||state.stats.energy<=0){showEnding("burnout");return;}
+    if(state.stats.mental<=0||state.stats.energy<=0){
+      openFatalCrisis(choice,current,success);
+      return;
+    }
 
+    continueAfterChoice(choice,current,success);
+  }
+
+  function continueAfterChoice(choice,current,success){
     if(state.scene==="__OPPORTUNITY_FLOW__"&&state.activeOpportunity){
       var flowState=state.activeOpportunity;
       if(choice.endFlow){
@@ -1999,6 +2015,39 @@
 
     saveState();render();
     scrollAfterRender();
+  }
+
+  function openFatalCrisis(choice,current,success){
+    var stat=state.stats.energy<=0?"energy":"mental";
+    currentCrisisStat=stat;
+    pendingChoiceContinuation={choice:choice,current:current,success:success};
+    var locked=isCompetitiveScene(state.scene,current);
+    var id=stat==="energy"?"energy_card":"mental_card";
+    var item=itemById(id);
+
+    el("crisisIcon").textContent=stat==="energy"?"⚡":"🧠";
+    el("crisisTitle").textContent=(stat==="energy"?"体力":"心理")+"已经耗尽";
+    el("crisisText").textContent=locked
+      ?("这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，广告和道具不会介入结果；如果继续确认，本局将在这里结束。")
+      :("这次选择让"+statNames[stat]+"降到了 0。本局原本会在这里结束。你可以使用恢复卡，或自愿获取一张恢复卡后继续；也可以接受当前结局。");
+
+    el("crisisUseBtn").hidden=locked;
+    el("crisisAdBtn").hidden=locked;
+    el("crisisUseBtn").disabled=itemCount(id)<=0;
+    el("crisisUseBtn").textContent=itemCount(id)>0?"使用"+item.name+"继续（现有 ×"+itemCount(id)+"）":"暂无"+item.name;
+    el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"获取")+" · "+item.name;
+    el("crisisContinueBtn").textContent="接受当前结局";
+    el("crisisOverlay").hidden=false;
+    document.body.classList.add("modal-open");
+    saveState();
+  }
+
+  function resumePendingChoice(){
+    if(!pendingChoiceContinuation)return;
+    var p=pendingChoiceContinuation;
+    pendingChoiceContinuation=null;
+    el("crisisContinueBtn").textContent="我知道了，继续";
+    continueAfterChoice(p.choice,p.current,p.success);
   }
 
   function sceneProgress(){
@@ -2425,7 +2474,8 @@
     state.inventory=Object.assign({},ITEM_DATA?ITEM_DATA.defaultInventory:{},raw.inventory||{});
     state.checkpoint=raw.checkpoint||null;
     state.lastCheckpointScene=raw.lastCheckpointScene||null;
-    state.crisisWarned=raw.crisisWarned||{energy:false,mental:false};
+    state.crisisWarned=raw.crisisWarningVersion===2?(raw.crisisWarned||{energy:false,mental:false}):{energy:false,mental:false};
+    state.crisisWarningVersion=2;
     state.adRewardsClaimed=raw.adRewardsClaimed||0;
     state.hintScene=raw.hintScene||null;
     state.specialtyId=raw.specialtyId||null;
@@ -2507,13 +2557,21 @@
   });
   el("crisisUseBtn").addEventListener("click",function(){
     if(!currentCrisisStat)return;
-    useItem(currentCrisisStat==="energy"?"energy_card":"mental_card",{closeCrisis:true});
+    useItem(currentCrisisStat==="energy"?"energy_card":"mental_card",{closeCrisis:true,resumeFatal:!!pendingChoiceContinuation});
   });
   el("crisisAdBtn").addEventListener("click",function(){
     if(!currentCrisisStat)return;
     requestRewardItem(currentCrisisStat==="energy"?"energy_card":"mental_card",true,this);
   });
-  el("crisisContinueBtn").addEventListener("click",closeCrisis);
+  el("crisisContinueBtn").addEventListener("click",function(){
+    if(pendingChoiceContinuation){
+      pendingChoiceContinuation=null;
+      closeCrisis();
+      showEnding("burnout");
+      return;
+    }
+    closeCrisis();
+  });
 
   el("postMessageBtn").addEventListener("click",postLegacyMessage);
   el("viewAllMessagesBtn").addEventListener("click",function(){
