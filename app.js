@@ -392,6 +392,24 @@
     var research=["open_research","academic_seminar","research_track","research_winter"];
     var clinical=["hospital_network","case_center","clinical_round","multi_hospital","city_rotation","clinical_foundation","specialty_exposure","clinical_city","clinical_skill","clinical_ground"];
     var regional=["regional_center","regional_service"];
+    if(kind==="college_skill"){
+      return [
+        {text:"报名高强度技能实训",sub:"动手会涨得很快，但三年制时间本来就紧。",effects:{knowledge:4,energy:-4},talentEffects:{dexterity:3},flags:["collegeSignatureSkill"],next:"__RETURN__"},
+        {text:"把更多时间留给专升本准备",sub:"技能保证过关，理论和英语优先。",effects:{knowledge:5,mental:-1},talentEffects:{english:1},flags:["collegeSignatureUpgrade"],next:"__RETURN__"}
+      ];
+    }
+    if(kind==="college_clinic"){
+      return [
+        {text:"争取更早进临床实践",sub:"病例和沟通经验会提前积累。",effects:{knowledge:4,reputation:4,energy:-3},talentEffects:{communication:2,dexterity:1},flags:["collegeSignatureClinic"],next:"__RETURN__"},
+        {text:"先稳住理论与升学基础",sub:"三年很短，考试准备也不能掉。",effects:{knowledge:6,mental:2},flags:["collegeSignatureFoundation"],next:"__RETURN__"}
+      ];
+    }
+    if(kind==="college_service"){
+      return [
+        {text:"参加基层医疗实践",sub:"更早理解真实医疗需求和资源限制。",effects:{knowledge:4,reputation:5,energy:-2},talentEffects:{communication:2,resilience:1},flags:["collegeSignatureService"],next:"__RETURN__"},
+        {text:"优先准备学历提升",sub:"先争取下一张入场券。",effects:{knowledge:5,mental:-1},talentEffects:{english:1},flags:["collegeSignatureUpgrade"],next:"__RETURN__"}
+      ];
+    }
     if(kind==="cross_ai"||kind==="innovation_eye"){
       return [
         {text:"抓住交叉机会",sub:"补技术短板，进入新赛道。",effects:{research:7,knowledge:4,energy:-5},talentEffects:{researchSense:2,english:1},flags:["signatureOpportunity","crossDiscipline"],next:"__RETURN__"},
