@@ -1,6 +1,11 @@
 (function(){
   "use strict";
 
+  var CONFIG={
+    // 开发版按当前玩法开启。正式微信小程序提审前可一键关闭。
+    shareReviveEnabled:true
+  };
+
   function defaultPayload(){
     return {
       title:"医学生养成记录｜这一局我走到了这里",
@@ -31,9 +36,10 @@
   }
 
   window.SHARE_SERVICE={
+    config:CONFIG,
     share:share,
     prepareWechatMenu:prepareWechatMenu,
     payload:defaultPayload,
-    note:"正式原生微信小程序迁移时，用 open-type=share / onShareAppMessage 接入；分享本身不发游戏奖励。"
+    note:"正式原生微信小程序迁移时，用 open-type=share / onShareAppMessage 接入。shareReviveEnabled 可在提审前关闭分享复活。"
   };
 })();
