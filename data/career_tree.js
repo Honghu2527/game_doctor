@@ -13,7 +13,7 @@ window.CAREER_DATA = {
     "white_coat_oath","key_undergrad_identity","ug_research_route","ug_clinical_route","ug_balanced_route","ug_global_route",
     "ug_opportunity_fair","clinical_exposure","key_graduation",
     "edu_master_recommend_type","edu_master_exam_type","edu_master_school","edu_master_specialty","edu_master_prepare","edu_master_interview","edu_master_result",
-    "edu_master_overseas_school","edu_master_overseas_direction","edu_master_overseas_prepare","edu_master_overseas_interview","edu_master_overseas_result",
+    "edu_master_overseas_school","edu_master_overseas_specialty","edu_master_overseas_direction","edu_master_overseas_prepare","edu_master_overseas_interview","edu_master_overseas_result",
     "grad_exam_route","exam_fail_choice","recommended_postgrad",
     "specialty_select_clinical_master","specialty_select_academic_master","specialty_select_direct_phd","specialty_select_resident",
     "clinical_master","clinical_master_finish","academic_master","direct_phd","overseas_postgrad","master_opportunity_round","phd_decision",
