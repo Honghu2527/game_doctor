@@ -9,6 +9,8 @@
   var COLLEGE_DATA=window.COLLEGE_DATA;
   var SPECIALTY_DATA=window.SPECIALTY_DATA;
   var EDUCATION_DATA=window.EDUCATION_DATA;
+  var LANGUAGE_DATA=window.LANGUAGE_DATA;
+  var JOB_DATA=window.JOB_DATA;
   var OPPORTUNITY_DATA=window.OPPORTUNITY_DATA;
   var BOARD=window.MESSAGE_BOARD;
   var DIFFICULTIES=DATA.difficulties;
@@ -16,7 +18,7 @@
   var SIDE_EVENTS=DATA.sideEvents;
   var ECO_EVENTS=SCHOOL_SYSTEM.ecoEvents;
   var ORDER=CAREER_DATA.order.concat(COLLEGE_DATA?COLLEGE_DATA.order:[]);
-  var SAVE_KEY="doctor-life-sim-v09";
+  var SAVE_KEY="doctor-life-sim-v10";
   var BOARD_KEY="doctor-life-message-wall-v1";
 
   var state=null;
@@ -30,8 +32,8 @@
   var schoolSearchQuery="";
   var boardSort="newest";
 
-  var statKeys=["knowledge","energy","mental","money","research","reputation"];
-  var statNames={knowledge:"知识",energy:"体力",mental:"心理",money:"金钱",research:"科研",reputation:"声望"};
+  var statKeys=["knowledge","energy","mental","money","research","reputation","english"];
+  var statNames={knowledge:"知识",energy:"体力",mental:"心理",money:"金钱",research:"科研",reputation:"声望",english:"英语"};
 
   var Storage={
     save:function(payload){try{localStorage.setItem(SAVE_KEY,JSON.stringify(payload));}catch(e){}},
@@ -77,6 +79,279 @@
     if((state.flags.has("clinicalMaster")||state.flags.has("academicMaster")||state.flags.has("overseasOffer"))&&h.master)return h.master.schoolName;
     return h.undergrad?h.undergrad.schoolName:(currentSchool()?currentSchool().name:"—");
   }
+
+  function currentEmployerName(){
+    return state&&state.job?state.job.hospitalName+" · "+state.job.cityName:"尚未就业";
+  }
+
+  function educationRank(){
+    var h=state&&state.educationHistory||{};
+    if(h.phd)return 3;
+    if(h.master)return 2;
+    return 1;
+  }
+
+  function maxTrainingPlatform(){
+    var level=(currentSchool()&&currentSchool().level)||1;
+    var h=state&&state.educationHistory||{};
+    if(h.master&&h.master.schoolId){
+      var ms=findEduSchool(h.master.schoolId);
+      if(ms)level=Math.max(level,ms.difficulty||3);
+    }
+    if(h.phd&&h.phd.schoolId){
+      var ps=findEduSchool(h.phd.schoolId);
+      if(ps)level=Math.max(level,ps.difficulty||3);
+    }
+    return level;
+  }
+
+  function publicationSummary(){
+    var pubs=(state&&state.publications)||[];
+    var q1=pubs.filter(function(p){return p.quartile==="Q1";}).length;
+    var totalIF=pubs.reduce(function(sum,p){return sum+(Number(p.ifValue)||0);},0);
+    var maxIF=pubs.reduce(function(m,p){return Math.max(m,Number(p.ifValue)||0);},0);
+    return {total:pubs.length,q1:q1,totalIF:Math.round(totalIF*10)/10,maxIF:Math.round(maxIF*10)/10};
+  }
+
+  function recordPublication(source,boost){
+    state.publications=state.publications||[];
+    var score=metricValue("research")+(boost||0)+rand(-6,6);
+    var quartile,ifValue;
+    if(score>=72){quartile="Q1";ifValue=rand(50,120)/10;}
+    else if(score>=58){quartile="Q2";ifValue=rand(30,72)/10;}
+    else if(score>=44){quartile="Q3";ifValue=rand(16,45)/10;}
+    else{quartile="Q4";ifValue=rand(8,28)/10;}
+    var pub={id:"pub_"+Date.now()+"_"+rand(100,999),source:source,quartile:quartile,ifValue:ifValue};
+    state.publications.push(pub);
+    addLog("科研成果",source+"形成 1 篇 SCI（"+quartile+"，IF "+ifValue.toFixed(1)+"）。");
+  }
+
+  function syncPublicationMilestones(currentId,nextId){
+    state.publicationMilestones=state.publicationMilestones||{};
+    function once(key,condition,source,boost){
+      if(condition&&!state.publicationMilestones[key]){
+        state.publicationMilestones[key]=true;
+        recordPublication(source,boost||0);
+      }
+    }
+    once("ug_project_paper",state.flags.has("studentPI")&&state.flags.has("studentProjectPaper"),"本科科研项目",0);
+    once("master_core_paper",state.flags.has("academicMaster")&&(state.flags.has("phdPrep")||state.flags.has("keyProject")),"硕士阶段研究",4);
+    once("joint_paper",state.flags.has("phdJoint")&&state.flags.has("phdJointPaper"),"博士联合培养",7);
+    once("phd_project_paper",state.flags.has("phdKeyProject"),"博士重点项目",8);
+    once("young_research_paper",state.flags.has("researchTrack"),"青年医生科研线",5);
+    if(nextId==="phd_graduation"||currentId==="phd_graduation"){
+      once("phd_core_1",true,"博士核心课题",8);
+      once("phd_core_2",metricValue("research")>=55,"博士阶段研究",5);
+      once("phd_core_3",metricValue("research")>=78,"博士高质量研究",10);
+    }
+  }
+
+  function cityById(id){
+    return JOB_DATA&&JOB_DATA.cities.find(function(x){return x.id===id;});
+  }
+  function hospitalById(id){
+    return JOB_DATA&&JOB_DATA.hospitalTemplates.find(function(x){return x.id===id;});
+  }
+  function hasResidencyCredential(){
+    return !!(state.flags.has("residentPassed")||state.flags.has("integratedResidencyFinished"));
+  }
+
+  function jobRequirementCheck(h){
+    var pub=publicationSummary(),reasons=[];
+    if(educationRank()<(h.minEducation||1))reasons.push((h.minEducation===3?"博士":h.minEducation===2?"硕士":"本科")+"学历");
+    if(h.requireResidency&&!hasResidencyCredential())reasons.push("规培/并轨规培结业");
+    if(metricValue("research")<(h.minResearch||0))reasons.push("科研≥"+h.minResearch);
+    if(pub.q1<(h.minQ1||0))reasons.push("Q1 SCI≥"+h.minQ1+"篇");
+    if(pub.totalIF<(h.minIF||0))reasons.push("累计IF≥"+h.minIF);
+    if(maxTrainingPlatform()<(h.minPlatform||0))reasons.push("高平台教育/训练背景");
+    return {ok:reasons.length===0,reasons:reasons};
+  }
+
+  function jobRequirementText(h){
+    var bits=[];
+    bits.push(h.minEducation===3?"博士":h.minEducation===2?"硕士及以上":"本科及以上");
+    if(h.requireResidency)bits.push("规培结业");
+    if(h.minQ1)bits.push("Q1≥"+h.minQ1+"篇");
+    if(h.minIF)bits.push("累计IF≥"+h.minIF);
+    if(h.minResearch)bits.push("科研≥"+h.minResearch);
+    if(h.preferredPlatform)bits.push("高水平院校背景加分");
+    return bits.join(" · ");
+  }
+
+  function jobProbability(){
+    var a=state.jobApplication||{},h=a.hospital||hospitalById(a.hospitalId),city=cityById(a.cityId);
+    if(!h||!city)return .1;
+    var p=h.baseChance||.4;
+    p+=(metricValue("knowledge")-50)/100*(h.weightClinical||.25);
+    p+=(metricValue("research")-50)/100*(h.weightResearch||.15);
+    p+=(metricValue("reputation")-50)/100*(h.weightReputation||.15);
+    p+=(metricValue("communication")-50)/350;
+    p+=(a.prep||0)/180;
+    if(maxTrainingPlatform()>=(h.preferredPlatform||99))p+=.05;
+    if(state.specialtyId)p+=.03;
+    p-=Math.max(0,(city.competition||3)-2)*.018;
+    return clamp(p,.08,.90);
+  }
+
+  function jobMarketEvent(){
+    if(!state||!JOB_DATA)return null;
+    var scene=state.scene;
+    if(["job_choice","job_city_select","job_hospital_select","job_application_prepare","job_interview","job_result","job_offer","job_rejected"].indexOf(scene)<0)return null;
+
+    if(scene==="job_choice"||scene==="job_city_select"){
+      return {
+        stage:"求职 1/5 · 选择城市",year:"毕业 / 规培结业后",title:"第一份正式工作，先决定你想去哪里",type:"jobMarket",critical:true,
+        warning:"城市会改变医院数量、竞争强度、生活成本和可见岗位层级。",
+        text:"你不再是“选一个选项就入职”。从这里开始，先选城市，再投具体医院。",
+        choices:JOB_DATA.cities.map(function(city){
+          return {text:city.name,sub:"竞争 "+stars(city.competition)+" · 生活成本 "+stars(city.cost),jobCityId:city.id,next:"job_hospital_select"};
+        })
+      };
+    }
+
+    if(scene==="job_hospital_select"){
+      var city=cityById(state.jobApplication&&state.jobApplication.cityId);
+      if(!city){state.scene="job_city_select";return jobMarketEvent();}
+      var jobs=JOB_DATA.hospitalTemplates.filter(function(h){return city.tier>=h.minCityTier;});
+      return {
+        stage:"求职 2/5 · 选择医院",year:"毕业 / 规培结业后",title:"在 "+city.name+"，你准备把简历投向哪里？",type:"jobMarket",
+        text:JOB_DATA.disclaimer,
+        choices:jobs.map(function(h){
+          var ck=jobRequirementCheck(h);
+          return {
+            text:h.name,
+            sub:h.desc+"｜门槛："+jobRequirementText(h)+(ck.ok?"":"｜当前缺少："+ck.reasons.join("、")),
+            jobHospitalId:h.id,jobEligible:ck.ok,jobReason:ck.reasons.join("、"),next:"job_application_prepare"
+          };
+        }).concat([{text:"换一个城市",sub:"重新考虑城市与生活成本。",next:"job_city_select"}])
+      };
+    }
+
+    if(scene==="job_application_prepare"){
+      var hh=state.jobApplication&&state.jobApplication.hospital;
+      return {
+        stage:"求职 3/5 · 简历筛选",year:"求职阶段",title:"同一岗位收到了很多份简历",type:"jobMarket",
+        text:"学历只是第一层筛选。论文、规培、专科匹配和履历表达都会影响你能不能进入面试。",
+        choices:[
+          {text:"把临床能力和规培经历放在最前面",sub:"适合临床导向岗位。",effects:{energy:-2},jobPrepAdd:12,next:"job_interview"},
+          {text:"重点突出论文、项目和科研能力",sub:"高平台医院更看重这一部分。",effects:{energy:-3},jobPrepAdd:15,next:"job_interview"},
+          {text:"针对 "+(hh?hh.name:"目标医院")+" 重写一版简历",sub:"最耗时间，但匹配度更高。",effects:{energy:-4,mental:-1},jobPrepAdd:20,next:"job_interview"}
+        ]
+      };
+    }
+
+    if(scene==="job_interview"){
+      return {
+        stage:"求职 4/5 · 面试竞争",year:"求职阶段",title:"面试老师问：为什么我们要选你？",type:"jobMarket",
+        text:"现在竞争的是同一批都已经达到基本门槛的人。",
+        choices:[
+          {text:"用复杂病例和临床成长回答",sub:"知识、沟通和专科经历更重要。",effects:{mental:-2},jobPrepAdd:10,next:"job_result"},
+          {text:"用科研成果和未来课题计划回答",sub:"研究型岗位更受益。",effects:{mental:-2},jobPrepAdd:10,next:"job_result"},
+          {text:"强调长期留在这个城市和团队的计划",sub:"稳定性与沟通更突出。",effects:{mental:-1},jobPrepAdd:7,next:"job_result"}
+        ]
+      };
+    }
+
+    if(scene==="job_result"){
+      var hp=state.jobApplication&&state.jobApplication.hospital;
+      var cp=cityById(state.jobApplication&&state.jobApplication.cityId);
+      return {
+        stage:"求职 5/5 · 招聘结果",year:"求职阶段",title:"招聘系统状态更新了",type:"jobResult",
+        text:"目标："+(cp?cp.name:"")+" · "+(hp?hp.name:"")+". 你的门槛、履历和面试准备已经全部计入结果。",
+        choices:[{text:"查看招聘结果",sub:"岗位不是必中的，结果由履历、竞争和随机性共同决定。",jobQuery:true}]
+      };
+    }
+
+    if(scene==="job_offer"){
+      var ja=state.jobApplication||{},jc=cityById(ja.cityId),jh=ja.hospital;
+      return {
+        stage:"招聘结果 · Offer",year:"求职阶段",title:"你收到了录用通知",type:"jobResult",
+        text:(jc?jc.name:"")+" · "+(jh?jh.name:"")+" 向你发出了录用 Offer。",
+        choices:[
+          {text:"接受 Offer，办理入职",sub:"正式开始第一份医院工作。",jobAccept:true,next:"young_attending"},
+          {text:"继续看看其他城市",sub:"放弃这份 Offer，重新进入求职市场。",effects:{mental:-1},next:"job_city_select"}
+        ]
+      };
+    }
+
+    return {
+      stage:"招聘结果 · 未录用",year:"求职阶段",title:"这一次没有拿到 Offer",type:"jobResult",
+      text:"达到基本门槛不等于一定录用。岗位数量、同批候选人和面试表现都会改变结果。",
+      choices:[
+        {text:"在同一个城市换一家医院继续投",sub:"保留城市选择，重新匹配岗位。",effects:{mental:-2,energy:-2},next:"job_hospital_select"},
+        {text:"换一个城市重新开始",sub:"降低或改变竞争环境。",effects:{mental:1},next:"job_city_select"}
+      ]
+    };
+  }
+
+  function startJobQuery(){
+    var a=state.jobApplication||{},h=a.hospital||hospitalById(a.hospitalId);
+    if(!h)return;
+    var ck=jobRequirementCheck(h);
+    var p=ck.ok?jobProbability():0;
+    var success=ck.ok&&Math.random()<p;
+    a.lastProbability=p;
+    a.result=success;
+    if(success){
+      state.scene="job_offer";
+      addLog("求职结果","通过 "+h.name+" 的简历与面试竞争，收到 Offer。");
+    }else{
+      state.scene="job_rejected";
+      state.jobFailures=(state.jobFailures||0)+1;
+      applyEffects({mental:-3});
+      addLog("求职结果",h.name+" 本轮未录用。");
+    }
+    saveState();render();scrollAfterRender();
+  }
+
+  function acceptJobOffer(){
+    var a=state.jobApplication||{},city=cityById(a.cityId),h=a.hospital||hospitalById(a.hospitalId);
+    if(!city||!h)return;
+    state.job={
+      cityId:city.id,cityName:city.name,hospitalId:h.id,hospitalName:h.name,
+      tier:h.id,startTitle:"住院医师 / 初级医师"
+    };
+    state.flags.add("employed");
+    if(h.id==="national_academic")state.flags.add("topHospital");
+    else if(h.id==="provincial_aaa")state.flags.add("regionalHospital");
+    else if(h.id==="county_center")state.flags.add("countyHospital");
+    state.route="职业·"+city.name+"·"+h.name;
+    addLog("正式入职",state.name+" 入职 "+city.name+" 的 "+h.name+"。");
+  }
+
+  function currentProfessionalTitle(){
+    if(state.flags.has("director"))return "主任医师 / 科主任";
+    if(state.flags.has("expert"))return "主任医师 / 临床专家";
+    if(state.flags.has("academicianTrack"))return "主任医师 / 学术PI";
+    if(state.flags.has("promotionSuccess"))return "副主任医师";
+    if(state.flags.has("researchTrack")||state.flags.has("clinicalTrack")||state.flags.has("lifeTrack"))return "主治医师";
+    if(state.job)return state.job.startTitle;
+    if(/^resident_/.test(state.scene||"")||state.flags.has("directResident"))return "规培 / 住院医师";
+    return "";
+  }
+
+  function terminationStageLabel(type){
+    var e=allEvents()[state.scene];
+    if(type==="burnout"&&e&&e.stage)return e.stage;
+    var title=currentProfessionalTitle();
+    if(title)return title;
+    if(/^phd_|direct_phd|edu_phd/.test(state.scene||"")||state.flags.has("phdDomestic")||state.flags.has("phdOverseas"))return "博士研究生 / 博士阶段";
+    if(state.flags.has("clinicalMaster")||state.flags.has("academicMaster"))return "硕士研究生阶段";
+    if(/本科|大一|白大褂/.test((e&&e.stage)||""))return "本科医学生阶段";
+    return (e&&e.stage)||"医学人生当前阶段";
+  }
+
+  function renderEndingStatus(type){
+    var pub=publicationSummary();
+    var stage=terminationStageLabel(type);
+    var place=state.job?(state.job.cityName+" · "+state.job.hospitalName):currentInstitutionName();
+    el("endingStatusHeadline").textContent="终止于："+stage;
+    el("endingStatusMeta").textContent=place+" · "+currentSpecialtyName()+" · "+highestEducationLabel();
+    var parts=["SCI "+pub.total+" 篇","Q1 "+pub.q1+" 篇","累计 IF "+pub.totalIF.toFixed(1)];
+    if(pub.total)parts.push("最高 IF "+pub.maxIF.toFixed(1));
+    el("endingResearchSummary").innerHTML=parts.map(function(x){return "<span>"+escapeHtml(x)+"</span>";}).join("");
+  }
+
 
   function scrollAfterRender(){
     window.requestAnimationFrame(function(){
@@ -505,16 +780,18 @@
     directApply(stats,bg.mods);
     directApply(stats,school.mods);
     var profileId=profileIdForSchool(school);
+    var talents=generateTalents(rollingScore,school,profile);
+    stats.english=talents.english;
 
     state={
-      version:9,
+      version:10,
       name:pendingName,
       background:bg,
       difficulty:selectedDifficulty,
       score:rollingScore,
       schoolId:id,
       profileId:profileId,
-      talents:generateTalents(rollingScore,school,profile),
+      talents:talents,
       stats:stats,
       flags:new Set(),
       scene:"__SIGNATURE__",
@@ -527,6 +804,11 @@
       },
       eduApplication:null,
       pendingAdmissionResult:null,
+      publications:[],
+      publicationMilestones:{},
+      job:null,
+      jobApplication:null,
+      jobFailures:0,
       specialtyId:null,
       specialtyReturnNext:null,
       route:(school.educationLevel==="专科"?"专科·未分流":"本科·未分流"),
@@ -616,6 +898,11 @@
   function applyTalentEffects(effects){
     if(!effects||!state.talents)return;
     Object.keys(effects).forEach(function(k){
+      if(k==="english"&&state.stats){
+        state.stats.english=clamp(Math.round((state.stats.english===undefined?(state.talents.english||50):state.stats.english)+effects[k]),0,100);
+        state.talents.english=state.stats.english;
+        return;
+      }
       if(state.talents[k]===undefined)return;
       state.talents[k]=clamp(Math.round(state.talents[k]+effects[k]),20,95);
     });
@@ -1204,6 +1491,7 @@
     Object.keys(CAREER_EVENTS).forEach(function(k){merged[k]=CAREER_EVENTS[k];});
     if(COLLEGE_DATA)Object.keys(COLLEGE_DATA.events).forEach(function(k){merged[k]=COLLEGE_DATA.events[k];});
     if(SPECIALTY_DATA)Object.keys(SPECIALTY_DATA.events).forEach(function(k){merged[k]=SPECIALTY_DATA.events[k];});
+    if(LANGUAGE_DATA)Object.keys(LANGUAGE_DATA.events).forEach(function(k){merged[k]=LANGUAGE_DATA.events[k];});
     Object.keys(SIDE_EVENTS).forEach(function(k){merged[k]=SIDE_EVENTS[k];});
     Object.keys(ECO_EVENTS).forEach(function(k){merged[k]=ECO_EVENTS[k];});
     var sig=signatureEventForSchool();
@@ -1212,6 +1500,8 @@
     if(specialtySelect)merged[state.scene]=specialtySelect;
     var educationEvent=educationApplicationEvent();
     if(educationEvent)merged[state.scene]=educationEvent;
+    var jobEvent=jobMarketEvent();
+    if(jobEvent)merged[state.scene]=jobEvent;
     var opp=activeOpportunityEvent();
     if(opp)merged.__OPPORTUNITY_FLOW__=opp;
     return merged;
@@ -1236,7 +1526,19 @@
       return true;
     }
 
-    if(current.type==="key"||current.type==="opportunity"||current.type==="specialtySelect"||current.type==="educationApply"||current.type==="educationSchool"||current.type==="educationResult")return false;
+    if(current.type==="key"||current.type==="opportunity"||current.type==="specialtySelect"||current.type==="educationApply"||current.type==="educationSchool"||current.type==="educationResult"||current.type==="jobMarket"||current.type==="jobResult"||current.type==="language")return false;
+
+    if(LANGUAGE_DATA){
+      var stage=current.stage||"";
+      var poolName=/本科|大一|白大褂|见习|专科/.test(stage)?"undergrad":/研究生|临床专硕|学硕|海外升学/.test(stage)?"master":/博士/.test(stage)?"phd":/规培|住院|主治|职业|高级职称/.test(stage)?"career":null;
+      var lpool=poolName?(LANGUAGE_DATA.pools[poolName]||[]).filter(function(id){return LANGUAGE_DATA.events[id]&&!state.visitedSide.has(id);}):[];
+      if(lpool.length&&Math.random()<.20){
+        var lid=lpool[Math.floor(Math.random()*lpool.length)];
+        state.pendingNext=next;state.scene=lid;state.visitedSide.add(lid);
+        addLog("英语成长","触发《"+LANGUAGE_DATA.events[lid].title+"》。");
+        return true;
+      }
+    }
 
     if(SPECIALTY_DATA&&state.specialtyId&&current.type!=="specialty"&&/研究生|博士|规培|住院|主治|职业|高级职称|临床专硕|学硕/.test(current.stage||"")){
       var spec=SPECIALTY_DATA.specialties[state.specialtyId];
@@ -1304,6 +1606,25 @@
       state.eduApplication=state.eduApplication||{prep:0};
       state.eduApplication.prep=(state.eduApplication.prep||0)+choice.eduPrepAdd;
     }
+    if(choice.jobCityId){
+      state.jobApplication={cityId:choice.jobCityId,prep:0};
+    }
+    if(choice.jobHospitalId){
+      state.jobApplication=state.jobApplication||{prep:0};
+      state.jobApplication.hospitalId=choice.jobHospitalId;
+      state.jobApplication.hospital=hospitalById(choice.jobHospitalId);
+    }
+    if(choice.jobPrepAdd){
+      state.jobApplication=state.jobApplication||{prep:0};
+      state.jobApplication.prep=(state.jobApplication.prep||0)+choice.jobPrepAdd;
+    }
+    if(choice.jobQuery){
+      startJobQuery();
+      return;
+    }
+    if(choice.jobAccept){
+      acceptJobOffer();
+    }
     if(choice.admissionQuery){
       addLog("录取查询","开始查询 "+((state.eduApplication&&state.eduApplication.school&&state.eduApplication.school.name)||"目标院校")+" 的录取结果。");
       startAdmissionQuery();
@@ -1351,6 +1672,7 @@
 
     var success=null;
     if(choice.chance)success=resolveChance(choice.chance);
+    syncPublicationMilestones(state.scene,null);
 
     var effects=effectText(choice.effects);
     addLog(current.stage,current.title+" → "+choice.text+(effects?"（"+effects+"）":""));
@@ -1381,6 +1703,7 @@
     var next=choice.next;
     if(success===true&&choice.successNext)next=choice.successNext;
     if(success===false&&choice.failNext)next=choice.failNext;
+    syncPublicationMilestones(state.scene,next);
 
     if(next==="__END__"){showEnding();return;}
 
@@ -1445,6 +1768,7 @@
     el("metaProfile").textContent=profile.name;
     el("metaRoute").textContent=state.route||"本科·未分流";
     el("metaSpecialty").textContent=currentSpecialtyName();
+    el("metaEmployer").textContent=currentEmployerName();
     el("metaBackground").textContent=backgroundShort(state.background);
     renderJourneyRibbon("gameScreen");
     renderEducationTimeline();
@@ -1456,7 +1780,7 @@
     el("sceneText").textContent=e.text;
     el("progressBar").style.width=sceneProgress()+"%";
 
-    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":e.type==="specialtySelect"?"科室分流":e.type==="specialty"?"科室专属":e.type==="educationSchool"?"选择院校":e.type==="educationApply"?"升学申请":e.type==="educationResult"?"录取查询":"主线";
+    var typeName=e.type==="side"?"支线任务":e.type==="random"?"随机事件":e.type==="school"?"院校专属":e.type==="key"?"关键节点":e.type==="opportunity"?"竞争机会":e.type==="application"?"申请进行中":e.type==="resultSuccess"?"申请成功":e.type==="resultFail"?"申请未通过":e.type==="specialtySelect"?"科室分流":e.type==="specialty"?"科室专属":e.type==="educationSchool"?"选择院校":e.type==="educationApply"?"升学申请":e.type==="educationResult"?"录取查询":e.type==="language"?"英语成长":e.type==="jobMarket"?"求职竞争":e.type==="jobResult"?"招聘结果":"主线";
     el("typeChip").textContent=typeName;
     el("typeChip").className="type-chip"+(e.type==="side"?" side":e.type==="random"?" random":e.type==="school"?" school":e.type==="key"?" key":e.type==="opportunity"?" opportunity":e.type==="application"?" application":e.type==="resultSuccess"?" success":e.type==="resultFail"?" fail":e.type==="specialtySelect"?" specialty-select":e.type==="specialty"?" specialty":e.type==="educationSchool"||e.type==="educationApply"?" education":e.type==="educationResult"?" education-result":"");
 
@@ -1493,11 +1817,11 @@
     var box=el("choices");
     box.innerHTML="";
     e.choices.filter(choiceVisible).forEach(function(c){
-      var ok=requirementsMet(c.requires);
+      var ok=requirementsMet(c.requires)&&(c.jobEligible!==false);
       var b=document.createElement("button");
-      b.className="choice-btn"+((c.specialtyId||c.eduSpecialtyId)?" specialty-choice":"")+(c.eduSchoolId?" education-school-choice":"");
+      b.className="choice-btn"+((c.specialtyId||c.eduSpecialtyId)?" specialty-choice":"")+(c.eduSchoolId?" education-school-choice":"")+(c.jobHospitalId?" job-choice":"");
       b.disabled=!ok;
-      var sub=ok?c.sub:"条件不足："+requirementText(c.requires);
+      var sub=ok?c.sub:(c.jobEligible===false?"硬性门槛未达标："+(c.jobReason||"岗位要求不足"):"条件不足："+requirementText(c.requires));
       var meta="";
       if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
       if(c.application)meta+="<span class=\"choice-meta\">只能申请一个 · "+escapeHtml(c.application)+"</span>";
@@ -1583,6 +1907,9 @@
       ["学历层级",highestEducationLabel()],
       ["主要路线",state.route||"—"],
       ["科室 / 学科",currentSpecialtyName()],
+      ["最终单位",state.job?state.job.cityName+" · "+state.job.hospitalName:"—"],
+      ["终止时身份",terminationStageLabel()],
+      ["科研成果",(function(){var p=publicationSummary();return "SCI "+p.total+" 篇 · Q1 "+p.q1+" 篇 · 累计IF "+p.totalIF.toFixed(1);})()],
       ["关键机会",wins.length?wins.join("、"):"本轮没有拿到稀缺机会，但人生仍继续"],
       ["培养生态",currentProfile().name],
       ["高考",String(state.score||"—")+" 分"]
@@ -1735,6 +2062,7 @@
     showOnly("endingScreen");
     el("endingTitle").textContent=ending[0];
     el("endingText").textContent=ending[1];
+    renderEndingStatus(type);
     el("endingStats").innerHTML=statKeys.map(function(k){
       return "<div class=\"ending-stat\"><span>"+statNames[k]+"</span><strong>"+state.stats[k]+"</strong></div>";
     }).join("");
@@ -1794,12 +2122,20 @@
     };
     state.eduApplication=raw.eduApplication||null;
     state.pendingAdmissionResult=null;
+    state.publications=raw.publications||[];
+    state.publicationMilestones=raw.publicationMilestones||{};
+    state.job=raw.job||null;
+    state.jobApplication=raw.jobApplication||null;
+    state.jobFailures=raw.jobFailures||0;
     state.specialtyId=raw.specialtyId||null;
     state.specialtyReturnNext=raw.specialtyReturnNext||null;
     state.route=raw.route||"本科·未分流";
     state.background=raw.background||null;
     state.signaturePending=!!raw.signaturePending;
     if(!raw.talents)state.talents=generateTalents(raw.score||620,schoolById(raw.schoolId),currentProfile());
+    state.stats=state.stats||{};
+    if(state.stats.english===undefined)state.stats.english=(state.talents&&state.talents.english)||50;
+    if(state.talents&&state.talents.english===undefined)state.talents.english=state.stats.english;
     selectedDifficulty=state.difficulty||"normal";
     pendingName=state.name||"";
     el("playerName").value=pendingName;
