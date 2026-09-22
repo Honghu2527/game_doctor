@@ -218,3 +218,16 @@ footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:
 @media(max-width:760px){
   .journey-grid{grid-template-columns:1fr}
 }
+
+
+/* v0.5.1 school explorer */
+.school-tools{margin:14px 0 18px;display:grid;gap:10px}
+.school-tools input{
+  width:100%;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 14px;outline:none
+}
+.school-tools input:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px rgba(31,97,89,.08)}
+.school-filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-btn{border:1px solid var(--line);background:#fff;padding:7px 11px;border-radius:999px;cursor:pointer;font-size:12px}
+.filter-btn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+#schoolResultCount{margin-left:auto;color:var(--muted);font-size:11px}
+.school-empty{grid-column:1/-1;border:1px dashed var(--line);border-radius:16px;padding:24px;text-align:center;color:var(--muted);background:#fffaf4}
