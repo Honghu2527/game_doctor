@@ -159,28 +159,25 @@ replace_once(
 "starter kit on enrollment"
 )
 
-replace_once(
-'''    addLog("人生复活",(method==="share"?"完成分享后复活":"完整观看激励视频后复活")+"。本局唯一一次复活机会已经使用。");
-''',
-'''    var reviveLabel=method==="free"?"首发版本免费复活":(method==="share"?"完成分享后复活":"完整观看激励视频后复活");
-    addLog("人生复活",reviveLabel+"。本局唯一一次复活机会已经使用。");
-''',
-"free revive support"
-)
+
 
 replace_once(
 '''    if(locked){
-      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，分享和广告复活不会介入这一竞争结果；确认后本局结束。";
+      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。你正处于考研、申博或求职竞争流程，复活机制不会介入这一竞争结果；确认后本局结束。";
       el("crisisUseBtn").hidden=true;
       el("crisisAdBtn").hidden=true;
     }else{
-      el("crisisText").textContent="这次选择让"+statNames[stat]+"降到了 0。本局只有 1 次复活机会：你可以选择「分享复活」或「看激励视频复活」，二选一。复活后如果再次死亡，将直接进入结局。";
-      el("crisisUseBtn").hidden=false;
-      el("crisisUseBtn").disabled=false;
+      var canShareRevive=shareReviveAllowed();
+      el("crisisText").textContent=canShareRevive
+        ?("这次选择让"+statNames[stat]+"降到了 0。本局只有 1 次复活机会：你可以选择「分享复活」或「看激励视频复活」，二选一。复活后如果再次死亡，将直接进入结局。")
+        :("这次选择让"+statNames[stat]+"降到了 0。本局只有 1 次复活机会：完整观看激励视频可复活一次。复活后如果再次死亡，将直接进入结局。普通分享不会增加复活次数。");
+      el("crisisUseBtn").hidden=!canShareRevive;
+      el("crisisUseBtn").disabled=!canShareRevive;
       el("crisisUseBtn").textContent="分享复活 · 本局唯一一次";
       el("crisisAdBtn").hidden=false;
       el("crisisAdBtn").disabled=false;
-      el("crisisAdBtn").textContent=(AD_SERVICE?AD_SERVICE.label():"观看视频")+" · 复活";
+      var realRewarded=!!(AD_SERVICE&&AD_SERVICE.isRealAdAvailable&&AD_SERVICE.isRealAdAvailable());
+      el("crisisAdBtn").textContent=(realRewarded?(AD_SERVICE?AD_SERVICE.label():"观看视频"):"首发免费复活")+" · 本局唯一一次";
     }
 ''',
 '''    var realAd=hasRealRewardAd();
