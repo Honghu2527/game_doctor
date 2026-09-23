@@ -32,6 +32,8 @@ var animTimer=null;
 var imageCache={};
 var lastScreen="";
 
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
 var stageAssets={
   undergrad:"assets/bg/undergrad_ai.webp",
   internal:"assets/bg/internal_ai.webp",
