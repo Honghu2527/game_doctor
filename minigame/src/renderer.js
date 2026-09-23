@@ -763,6 +763,7 @@ function parseEndingStats(){
 function parseEndingJourney(){
   return parseStructuredRows(E.endingJourney.rawHTML||E.endingJourney.innerHTML||"","journey-item");
 }
+G.__ENDING_PARSE__=parseStructuredRows;
 function parseSpanList(html){
   var out=[],m,re=new RegExp("<span[^>]*>([\\\\s\\\\S]*?)</span>","gi");
   while((m=re.exec(String(html||""))))out.push(plain(m[1]));
