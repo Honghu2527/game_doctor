@@ -11,10 +11,11 @@ var W=info.windowWidth||375;
 var H=info.windowHeight||667;
 var DPR=info.pixelRatio||1;
 var SAFE_TOP=(info.safeArea&&info.safeArea.top)||0;
-var canvas=wxapi.createCanvas();
-var ctx=canvas.getContext("2d");
+var canvas=G.__SCREEN_CANVAS__||wxapi.createCanvas();
+/* 先设物理尺寸，再取 context；避免部分小游戏运行时重置 Canvas 状态。 */
 canvas.width=Math.round(W*DPR);
 canvas.height=Math.round(H*DPR);
+var ctx=canvas.getContext("2d");
 ctx.scale(DPR,DPR);
 G.canvas=canvas;
 
@@ -828,8 +829,23 @@ function scheduleAnim(){
   if(animTimer)return;
   animTimer=setTimeout(function(){animTimer=null;render();},60);
 }
+function drawFatalError(err){
+  ctx.save();
+  ctx.setTransform&&ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.fillStyle="#f3eee5";ctx.fillRect(0,0,W,H);
+  rr(18,SAFE_TOP+24,W-36,Math.min(300,H-SAFE_TOP-48),22,"#fffdf8","#d9d2c6");
+  text("小游戏启动失败",36,SAFE_TOP+48,W-72,28,{font:"800 23px sans-serif",color:"#8d332d"});
+  text("已经捕获到运行时错误，请把这个画面截图发给我。",36,SAFE_TOP+88,W-72,20,{font:"12px sans-serif",color:"#687779"});
+  var msg=String(err&&(err.stack||err.message||err)||"unknown error");
+  text(msg,36,SAFE_TOP+130,W-72,18,{font:"10px monospace",color:"#303638",maxLines:8});
+  ctx.restore();
+}
 function render(){
   hits=[];
+  if(G.__MINI_FATAL_ERROR__){
+    drawFatalError(G.__MINI_FATAL_ERROR__);
+    return;
+  }
   var sid=screenId();
   if(lastScreen&&lastScreen!==sid&&G.__scrollY===0)scrollY=0;
   lastScreen=sid;
