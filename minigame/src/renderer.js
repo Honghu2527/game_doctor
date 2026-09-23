@@ -695,45 +695,118 @@ function drawGame(y){
   rectFor(E.gameScreen,shellX,y,shellW,0);
   return y;
 }
+function parseEndingStats(){
+  var html=E.endingStats.rawHTML||E.endingStats.innerHTML||"",out=[],m;
+  var re=/<div class="ending-stat"><span>([\\s\\S]*?)<\\/span><strong>([\\s\\S]*?)<\\/strong><\\/div>/gi;
+  while((m=re.exec(html)))out.push({label:plain(m[1]),value:plain(m[2])});
+  return out;
+}
+function parseEndingJourney(){
+  var html=E.endingJourney.rawHTML||E.endingJourney.innerHTML||"",out=[],m;
+  var re=/<div class="journey-item"><span>([\\s\\S]*?)<\\/span><strong>([\\s\\S]*?)<\\/strong><\\/div>/gi;
+  while((m=re.exec(html)))out.push({label:plain(m[1]),value:plain(m[2])});
+  return out;
+}
+function parseSpanList(html){
+  var out=[],m,re=/<span[^>]*>([\\s\\S]*?)<\\/span>/gi;
+  while((m=re.exec(String(html||""))))out.push(plain(m[1]));
+  return out;
+}
 function drawEnding(y){
   var x=shellX,w=shellW,panelY=y;
-  var statsText=plain(E.endingStats.innerHTML),tags=extractAllClass(E.endingTags.innerHTML,"ending-tag"),journey=plain(E.endingJourney.innerHTML);
-  var ph=980;
+  var stats=parseEndingStats();
+  var tags=extractAllClass(E.endingTags.innerHTML,"ending-tag");
+  var journey=parseEndingJourney();
+  var research=parseSpanList(E.endingResearchSummary.innerHTML);
+
+  var statsGap=8,statsCols=3,statsW=(w-44-statsGap*(statsCols-1))/statsCols;
+  var statsRows=Math.max(1,Math.ceil(Math.max(stats.length,1)/statsCols));
+  var statsH=statsRows*58+(statsRows-1)*8;
+
+  var tagRows=1,tagX=0;
+  ctx.font="700 8px sans-serif";
+  tags.slice(0,14).forEach(function(t){
+    var tw=Math.min(w-44,ctx.measureText(t).width+20);
+    if(tagX&&tagX+tw>w-44){tagRows++;tagX=0;}
+    tagX+=tw+6;
+  });
+  var tagsH=tags.length?tagRows*25+(tagRows-1)*5:0;
+
+  var journeyRows=Math.max(1,Math.ceil(Math.max(journey.length,1)/2));
+  var journeyCardsH=journeyRows*62+(journeyRows-1)*8;
+  var archiveH=62+journeyCardsH+18;
+
+  var boardH=210;
+  var ph=24+26+20+95+18+132+14+statsH+18+tagsH+(tags.length?18:0)+archiveH+14+boardH+12+46+10+54+28;
   panel(x,panelY,w,ph,20);
   var cy=panelY+24;
+
   pill(x+22,cy,"人生结局",{fill:"#efe4d3",stroke:"#dfceb2",color:"#685139",font:"800 10px sans-serif",h:26});cy+=46;
-  cy+=text(E.endingTitle.textContent||"这一段医学人生结束了",x+22,cy,w-44,31,{font:"800 26px serif"})+8;
-  cy+=text(E.endingText.textContent||"",x+22,cy,w-44,21,{font:"12px sans-serif",color:C.muted})+18;
-  var statusH=150;rr(x+22,cy,w-44,statusH,18,gradient(x+22,cy,x+w-22,cy+statusH,[[0,"#fffdf8"],[1,"#f6f1e8"]]),"#d7cdbd");
+  cy+=text(E.endingTitle.textContent||"这一段医学人生结束了",x+22,cy,w-44,31,{font:"800 26px serif",color:"#1e3236"})+8;
+  cy+=text(E.endingText.textContent||"",x+22,cy,w-44,20,{font:"11px sans-serif",color:C.muted})+16;
+
+  var statusH=132;
+  rr(x+22,cy,w-44,statusH,18,gradient(x+22,cy,x+w-22,cy+statusH,[[0,"#fffdf8"],[1,"#f4ede2"]]),"#d7cdbd");
   text("FINAL STATUS · 本局终止时身份",x+36,cy+14,w-72,13,{font:"800 8px sans-serif",color:"#9a7540"});
-  text(E.endingStatusHeadline.textContent||"—",x+36,cy+36,w-72,26,{font:"800 20px sans-serif",color:"#21373b"});
-  text(E.endingStatusMeta.textContent||"",x+36,cy+68,w-72,17,{font:"10px sans-serif",color:"#697676",maxLines:2});
-  text(plain(E.endingResearchSummary.innerHTML),x+36,cy+105,w-72,16,{font:"9px sans-serif",color:"#345d55",maxLines:2});cy+=statusH+12;
-  if(statsText){cy+=htmlTextBox(statsText,x+22,cy,w-44,{fill:"#fffdf8",stroke:C.line,font:"10px sans-serif",lineH:16,color:C.ink})+10;}
+  text(E.endingStatusHeadline.textContent||"—",x+36,cy+35,w-72,27,{font:"800 21px sans-serif",color:"#21373b"});
+  text(E.endingStatusMeta.textContent||"",x+36,cy+68,w-72,16,{font:"10px sans-serif",color:"#697676",maxLines:2});
+  var rx=x+36,ry=cy+102;
+  research.slice(0,4).forEach(function(item){
+    var pw=pill(rx,ry,item,{fill:"#e7f0ec",color:"#315f55",font:"700 8px sans-serif",h:21,padX:7,lineH:11});
+    rx+=pw+6;
+  });
+  cy+=statusH+14;
+
+  stats.forEach(function(s,idx){
+    var row=Math.floor(idx/statsCols),col=idx%statsCols;
+    var xx=x+22+col*(statsW+statsGap),yy=cy+row*66;
+    rr(xx,yy,statsW,58,13,"#fffdf9","#ddd5c9");
+    text(s.label,xx+11,yy+9,statsW-22,13,{font:"8px sans-serif",color:"#7b817d"});
+    text(s.value,xx+11,yy+25,statsW-22,24,{font:"800 19px sans-serif",color:"#1d3034"});
+  });
+  cy+=statsH+16;
+
   if(tags.length){
-    var tx=x+22;
-    tags.slice(0,6).forEach(function(t){var pw=pill(tx,cy,t,{fill:"#e8eee9",color:"#36554d",font:"700 8px sans-serif",h:22,padX:7,lineH:12});tx+=pw+6;if(tx>x+w-90){tx=x+22;cy+=28;}});
-    cy+=34;
+    var tx=x+22,ty=cy;
+    tags.slice(0,14).forEach(function(t){
+      ctx.font="700 8px sans-serif";
+      var tw=Math.min(w-44,ctx.measureText(t).width+20);
+      if(tx>x+22&&tx+tw>x+w-22){tx=x+22;ty+=30;}
+      var pw=pill(tx,ty,t,{fill:"#e7efeb",color:"#36554d",font:"700 8px sans-serif",h:23,padX:8,lineH:12});
+      tx+=pw+6;
+    });
+    cy+=tagsH+18;
   }
-  if(journey){
-    var jh=Math.max(90,measureTextHeight(journey,w-72,"9px sans-serif",15,8)+48);
-    rr(x+22,cy,w-44,jh,18,"rgba(255,253,248,.92)",C.line);
-    text("CAREER ARCHIVE",x+36,cy+13,w-72,12,{font:"800 8px sans-serif",color:C.accent});
-    text("本轮生涯档案",x+36,cy+30,w-72,18,{font:"800 13px sans-serif"});
-    text(journey,x+36,cy+53,w-72,15,{font:"9px sans-serif",color:C.muted,maxLines:8});cy+=jh+12;
-  }
-  var boardY=cy,bh=210;rr(x+22,boardY,w-44,bh,18,"rgba(255,253,248,.92)",C.line);
-  vdom.legacyBoard._rect={x:x+22,docY:boardY,w:w-44,h:bh};
+
+  var archiveY=cy;
+  rr(x+22,archiveY,w-44,archiveH,18,"rgba(255,253,248,.95)",C.line);
+  text("CAREER ARCHIVE",x+36,archiveY+13,w-72,12,{font:"800 8px sans-serif",color:C.accent});
+  text("本轮生涯档案",x+36,archiveY+30,w-72,19,{font:"800 14px sans-serif",color:"#21373b"});
+  var cardGap=8,cardW=(w-72-cardGap)/2;
+  journey.forEach(function(it,idx){
+    var row=Math.floor(idx/2),col=idx%2;
+    var xx=x+36+col*(cardW+cardGap),yy=archiveY+58+row*70;
+    rr(xx,yy,cardW,62,12,"#fff","#e2d9cd");
+    text(it.label,xx+10,yy+9,cardW-20,12,{font:"7px sans-serif",color:"#8b8e89",maxLines:1});
+    text(it.value,xx+10,yy+25,cardW-20,15,{font:"700 9px sans-serif",color:"#26393d",maxLines:2});
+  });
+  cy+=archiveH+14;
+
+  var boardY=cy;
+  rr(x+22,boardY,w-44,boardH,18,"rgba(255,253,248,.95)",C.line);
+  vdom.legacyBoard._rect={x:x+22,docY:boardY,w:w-44,h:boardH};
   text("MESSAGE TO THE NEXT STUDENT",x+36,boardY+13,w-72,12,{font:"800 8px sans-serif",color:C.accent});
   text("给下一位医学生的一句话",x+36,boardY+31,w-72,19,{font:"800 14px sans-serif"});
-  text("网页版当前用本地数据演示完整交互；正式多人版接入云数据库后，新留言会实时推送到所有在线玩家。",
-    x+36,boardY+55,w-72,15,{font:"9px sans-serif",color:C.muted,maxLines:3});
+  text("当前版本留言保存在本机。后续开启在线留言墙后，可与其他玩家互动。",
+    x+36,boardY+56,w-72,15,{font:"9px sans-serif",color:C.muted,maxLines:2});
   rr(x+36,boardY+108,w-72,46,13,"#fff",C.line);
   text(E.legacyMessage.value||"例如：别只盯着结果，先想清楚自己想成为什么样的医生。",x+48,boardY+120,w-96,15,{font:"9px sans-serif",color:E.legacyMessage.value?C.ink:"#99948d",maxLines:2});
   addHit(E.legacyMessage,x+36,boardY+108,w-72,46,function(){focusInput(E.legacyMessage,200,true);});
   rr(x+36,boardY+164,w-72,32,10,gradient(x+36,boardY+164,x+w-36,boardY+196,[[0,"#a0444b"],[1,"#843139"]]));
   text("留下这句话",W/2,boardY+172,w-90,14,{font:"800 10px sans-serif",color:"#fff",align:"center"});
-  addHit(E.postMessageBtn,x+36,boardY+164,w-72,32,function(){E.postMessageBtn.click();});cy+=bh+12;
+  addHit(E.postMessageBtn,x+36,boardY+164,w-72,32,function(){E.postMessageBtn.click();});
+  cy+=boardH+12;
+
   cy+=ghostButton(E.endingShareBtn,x+22,cy,w-44,E.endingShareBtn.textContent||"分享我的医学人生","")+10;
   cy+=primaryButton(E.endingRestartBtn,x+22,cy,w-44,E.endingRestartBtn.textContent||"重新开启一局","");
   rectFor(E.endingScreen,x,panelY,w,cy-panelY+24);
