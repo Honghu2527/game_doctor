@@ -31,9 +31,15 @@ jobs:
             xargs -0 sed -i 's/window\./GameGlobal./g'
 
           sed -i \
+            -e 's/window\.requestAnimationFrame/GameGlobal.__RAF__/g' \
+            -e 's/window\.cancelAnimationFrame/GameGlobal.__CAF__/g' \
+            -e 's/window\.scrollTo/GameGlobal.__SCROLL_TO__/g' \
+            -e 's/window\.scrollY/GameGlobal.__scrollY/g' \
+            -e 's/window\.alert/GameGlobal.__ALERT__/g' \
+            -e 's/window\.confirm/GameGlobal.__CONFIRM__/g' \
             -e 's/window\./GameGlobal./g' \
-            -e 's/document\./GameGlobal.document./g' \
-            -e 's/localStorage\./GameGlobal.localStorage./g' \
+            -e 's/document\./GameGlobal.__DOC__./g' \
+            -e 's/localStorage\./GameGlobal.__STORAGE__./g' \
             dist/wechat-minigame/app-core.js dist/wechat-minigame/app-board.js
 
       - name: Syntax check
@@ -56,6 +62,8 @@ jobs:
           cat > /tmp/minigame-smoke.js <<'SMOKE'
           const path=require("path");
           global.GameGlobal={};
+          Object.defineProperty(global.GameGlobal,"document",{get:()=>({native:true}),configurable:false});
+          Object.defineProperty(global.GameGlobal,"localStorage",{get:()=>({native:true}),configurable:false});
           const noop=()=>{};
           function grad(){return {addColorStop:noop};}
           const ctx=new Proxy({
