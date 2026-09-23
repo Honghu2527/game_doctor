@@ -1,0 +1,65 @@
+name: Build WeChat Mini Game
+
+on:
+  push:
+    branches: [wechat-minigame]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare mini game package
+        shell: bash
+        run: |
+          set -e
+          rm -rf dist/wechat-minigame
+          mkdir -p dist/wechat-minigame
+          cp -R minigame/. dist/wechat-minigame/
+          cp -R data dist/wechat-minigame/data
+
+          # Data modules were written for the browser build. Bind them to the
+          # WeChat Mini Game global object so they can be reused without DOM.
+          find dist/wechat-minigame/data -type f -name '*.js' -print0 |             xargs -0 sed -i 's/window\./GameGlobal./g'
+
+      - name: Syntax check
+        shell: bash
+        run: |
+          set -e
+          node --check dist/wechat-minigame/game.js
+          node --check dist/wechat-minigame/src/config.js
+          node --check dist/wechat-minigame/src/main.js
+          find dist/wechat-minigame/data -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Privacy scan
+        shell: bash
+        run: |
+          set -e
+          PATTERN='Honghu2527|Honghu|2527|github\.com|game_doctor|game-doctor|honghuzhang|gmail\.com'
+          if grep -RniE "$PATTERN" dist/wechat-minigame; then
+            echo "Privacy scan failed: developer identity found in upload package."
+            exit 1
+          fi
+          echo "Privacy scan passed."
+
+      - name: Verify Mini Game structure
+        shell: bash
+        run: |
+          set -e
+          test -f dist/wechat-minigame/game.js
+          test -f dist/wechat-minigame/game.json
+          test -f dist/wechat-minigame/project.config.json
+          grep -q '"compileType": "game"' dist/wechat-minigame/project.config.json
+          grep -q '"appid": "wx593dd9974d74c564"' dist/wechat-minigame/project.config.json
+          echo "Mini Game package structure verified."
+
+      - name: Upload mini game artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: medical-life-wechat-minigame
+          path: dist/wechat-minigame
+          if-no-files-found: error
+          retention-days: 90
