@@ -58,6 +58,35 @@ replace_once(
     grantItem(id,1);
     addLog("关键节点奖励","走到新的关键人生节点，获得一份阶段奖励。");
   }
+
+  function admissionCelebrationInfo(a){
+    if(!state||!a)return null;
+    var isMaster=a.level==="master"||a.level==="overseas_master";
+    var isPhd=a.level==="phd";
+    if(!isMaster&&!isPhd)return null;
+    var flag=isPhd?"phdAdmissionCelebration":"masterAdmissionCelebration";
+    if(state.flags.has(flag))return null;
+    var energyGain=Math.max(0,Math.min(20,100-Number(state.stats.energy||0)));
+    var mentalGain=Math.max(0,Math.min(20,100-Number(state.stats.mental||0)));
+    return {
+      flag:flag,
+      label:isPhd?"博士研究生":"硕士研究生",
+      energyGain:energyGain,
+      mentalGain:mentalGain
+    };
+  }
+
+  function claimAdmissionCelebration(a){
+    var reward=admissionCelebrationInfo(a);
+    if(!reward)return null;
+    state.flags.add(reward.flag);
+    state.stats.energy=clamp(Number(state.stats.energy||0)+20,0,100);
+    state.stats.mental=clamp(Number(state.stats.mental||0)+20,0,100);
+    grantItem("energy_card",1);
+    grantItem("mental_card",1);
+    addLog("毕业旅行","恭喜考上"+reward.label+"。毕业旅行让你暂时从备考压力中恢复：体力 +"+reward.energyGain+"，心理 +"+reward.mentalGain+"；获得体力恢复卡 ×1、心理恢复卡 ×1。");
+    return reward;
+  }
 ''',
 "item reward helpers"
 )
@@ -237,6 +266,35 @@ replace_once(
     state.reviveCount=Math.min(1,raw.reviveCount||0);
 ''',
 "restore item reward state"
+)
+
+replace_once(
+'''    el("admissionResultText").textContent=r.success
+      ?("你已被 "+r.school.name+" "+admissionProgramLabel(a)+" 录取。")
+      :("这一次，"+r.school.name+" 没有向你发出录取通知。");
+    el("admissionResultMeta").innerHTML=
+''',
+'''    el("admissionResultText").textContent=r.success
+      ?("你已被 "+r.school.name+" "+admissionProgramLabel(a)+" 录取。")
+      :("这一次，"+r.school.name+" 没有向你发出录取通知。");
+    var celebration=r.success?admissionCelebrationInfo(a):null;
+    el("admissionRewardText").textContent=celebration
+      ?("🎉 恭喜你考上"+celebration.label+"！毕业旅行后：体力 +"+celebration.energyGain+" · 心理 +"+celebration.mentalGain+" · 体力恢复卡 ×1 · 心理恢复卡 ×1")
+      :"";
+    el("admissionResultMeta").innerHTML=
+''',
+"admission celebration preview"
+)
+
+replace_once(
+'''    if(r.success){
+      if(a.level==="master"){
+''',
+'''    if(r.success){
+      claimAdmissionCelebration(a);
+      if(a.level==="master"){
+''',
+"claim admission celebration reward"
 )
 
 path.write_text(src, encoding="utf-8")
