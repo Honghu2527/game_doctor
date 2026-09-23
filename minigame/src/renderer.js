@@ -48,26 +48,27 @@ function docVisible(y,h,margin){
 }
 
 var stageAssets={
-  undergrad:"assets/bg/undergrad_ai.webp",
-  internal:"assets/bg/internal_ai.webp",
-  surgery:"assets/bg/surgery_ai.webp",
-  pediatrics:"assets/bg/pediatrics_ai.webp",
-  radiology:"assets/bg/radiology_ai.webp",
-  nuclear:"assets/bg/nuclear_ai.webp",
-  pathology:"assets/bg/pathology_ai.webp",
-  research:"assets/bg/research_ai.webp",
-  overseas:"assets/bg/overseas_ai.webp",
-  hospital:"assets/bg/career_hospital_ai.webp",
-  ending:"assets/bg/ending_ai.webp",
-  obgyn:"assets/bg/surgery_ai.webp",
-  emergency:"assets/bg/career_hospital_ai.webp",
-  anesthesia:"assets/bg/surgery_ai.webp",
-  psychiatry:"assets/bg/internal_ai.webp",
-  general:"assets/bg/internal_ai.webp",
-  oncology:"assets/bg/research_ai.webp",
-  ophthalmology:"assets/bg/radiology_ai.webp",
-  dermatology:"assets/bg/pathology_ai.webp"
+  undergrad:"assets/bg-mobile/undergrad.jpg",
+  internal:"assets/bg-mobile/internal.jpg",
+  surgery:"assets/bg-mobile/surgery.jpg",
+  pediatrics:"assets/bg-mobile/pediatrics.jpg",
+  radiology:"assets/bg-mobile/radiology.jpg",
+  nuclear:"assets/bg-mobile/nuclear.jpg",
+  pathology:"assets/bg-mobile/pathology.jpg",
+  research:"assets/bg-mobile/research.jpg",
+  overseas:"assets/bg-mobile/overseas.jpg",
+  hospital:"assets/bg-mobile/hospital.jpg",
+  ending:"assets/bg-mobile/ending.jpg",
+  obgyn:"assets/bg-mobile/surgery.jpg",
+  emergency:"assets/bg-mobile/hospital.jpg",
+  anesthesia:"assets/bg-mobile/surgery.jpg",
+  psychiatry:"assets/bg-mobile/internal.jpg",
+  general:"assets/bg-mobile/internal.jpg",
+  oncology:"assets/bg-mobile/research.jpg",
+  ophthalmology:"assets/bg-mobile/radiology.jpg",
+  dermatology:"assets/bg-mobile/pathology.jpg"
 };
+var fallbackStageAsset="assets/bg/medical_stage_ai.jpg";
 
 function img(path){
   if(imageCache[path])return imageCache[path];
@@ -82,13 +83,13 @@ function img(path){
     render();
   };
   im.onerror=function(err){
-    im.__failed=true;
     try{console.warn("[medical-life] image failed",path,err||"");}catch(e){}
-    /* 部分真机对相对路径解析更严格，自动再尝试 ./ 前缀。 */
-    if(path.indexOf("./")!==0&&!im.__retried){
+    if(!im.__retried){
       im.__retried=true;
       try{im.src="./"+path;return;}catch(e){}
     }
+    im.__failed=true;
+    render();
   };
   im.src=path;
   return im;
@@ -324,8 +325,13 @@ function drawBackdrop(){
   ctx.fillStyle="#183033";ctx.fillRect(0,0,W,heroH);
   var key=stageKey();
   var path=stageAssets[key]||stageAssets.undergrad;
-  var im=img(path);
-  if(im&&im.__ready){
+  var primary=img(path);
+  var im=(primary&&primary.__ready)?primary:null;
+  if(!im&&primary&&primary.__failed){
+    var fallback=img(fallbackStageAsset);
+    if(fallback&&fallback.__ready)im=fallback;
+  }
+  if(im){
     try{
       var iw=Number(im.width||im.naturalWidth||0);
       var ih=Number(im.height||im.naturalHeight||0);
@@ -337,7 +343,6 @@ function drawBackdrop(){
         var sy=Math.max(0,(ih-sh)*0.50);
         ctx.drawImage(im,sx,sy,sw,sh,0,0,W,heroH);
       }else{
-        /* 真机 CanvasImage 可能不暴露 width/height；四参数 drawImage 仍可正常绘制。 */
         ctx.drawImage(im,0,0,W,heroH);
       }
     }catch(e){
