@@ -332,10 +332,19 @@ G.__SCROLL_TO__=function(arg){
   if(typeof G.__MINI_SCROLL_TO__==="function")G.__MINI_SCROLL_TO__(G.__scrollY);
 };
 
+var rafCanvas=G.__SCREEN_CANVAS__;
 G.__RAF__=function(fn){
+  if(rafCanvas&&typeof rafCanvas.requestAnimationFrame==="function"){
+    return rafCanvas.requestAnimationFrame(fn);
+  }
   return setTimeout(function(){fn(Date.now());},16);
 };
-G.__CAF__=function(id){clearTimeout(id);};
+G.__CAF__=function(id){
+  if(rafCanvas&&typeof rafCanvas.cancelAnimationFrame==="function"){
+    try{rafCanvas.cancelAnimationFrame(id);return;}catch(e){}
+  }
+  clearTimeout(id);
+};
 
 /* Browser dialogs are only used by non-core convenience UI in the web build. */
 G.__ALERT__=function(message){
