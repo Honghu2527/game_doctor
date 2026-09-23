@@ -1,6 +1,8 @@
-/* 微信小游戏原生入口 */
+/* 微信小游戏入口：复用已审核网页版逻辑 + 原生 Canvas 视觉复刻层 */
 GameGlobal.window = GameGlobal;
 GameGlobal.global = GameGlobal;
+
+require("./src/dom-adapter.js");
 
 require("./data/backgrounds.js");
 require("./data/schools.js");
@@ -17,4 +19,7 @@ require("./data/item_system.js");
 require("./data/opportunity_flows.js");
 require("./data/college_opportunities.js");
 
-require("./src/main.js");
+require("./app-board.js");
+require("./src/native-bridge.js");
+require("./app-core.js");
+require("./src/renderer.js");
