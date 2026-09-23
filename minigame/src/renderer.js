@@ -186,12 +186,14 @@ function panel(x,y,w,h,r){
 function primaryButton(node,x,y,w,label,sub){
   var lh=measureTextHeight(label,w-28,"800 14px sans-serif",19);
   var sh=sub?measureTextHeight(sub,w-28,"11px sans-serif",16):0;
-  var h=Math.max(48,14+lh+(sub?5+sh:0)+13);
+  var contentH=lh+(sub?5+sh:0);
+  var h=Math.max(48,14+contentH+13);
   var disabled=node&&node.disabled;
   var fill=disabled?"#b7aaa9":gradient(x,y,x+w,y+h,[[0,"#a0444b"],[1,"#843139"]]);
   withShadow(disabled?"rgba(0,0,0,0)":"rgba(132,49,57,.20)",16,6,function(){rr(x,y,w,h,14,fill,disabled?"#c7bcbc":"rgba(93,26,31,.15)");});
-  text(label,x+14,y+13,w-28,19,{font:"800 14px sans-serif",color:"#fff"});
-  if(sub)text(sub,x+14,y+13+lh+5,w-28,16,{font:"11px sans-serif",color:"rgba(255,255,255,.82)"});
+  var ty=y+(h-contentH)/2;
+  text(label,x+w/2,ty,w-28,19,{font:"800 14px sans-serif",color:"#fff",align:"center"});
+  if(sub)text(sub,x+w/2,ty+lh+5,w-28,16,{font:"11px sans-serif",color:"rgba(255,255,255,.82)",align:"center"});
   if(node&&!disabled)addHit(node,x,y,w,h,function(){node.click();});
   return h;
 }
@@ -199,11 +201,13 @@ function ghostButton(node,x,y,w,label,sub,opt){
   opt=opt||{};
   var lh=measureTextHeight(label,w-28,"700 14px sans-serif",19);
   var sh=sub?measureTextHeight(sub,w-28,"11px sans-serif",16):0;
-  var h=Math.max(46,13+lh+(sub?4+sh:0)+12);
+  var contentH=lh+(sub?4+sh:0);
+  var h=Math.max(46,13+contentH+12);
   var disabled=node&&node.disabled;
   rr(x,y,w,h,14,disabled?"#f0ece6":"#fffdf8",disabled?"#ddd5ca":(opt.stroke||C.line));
-  text(label,x+14,y+12,w-28,19,{font:"700 14px sans-serif",color:disabled?"#a49d94":(opt.color||C.ink)});
-  if(sub)text(sub,x+14,y+12+lh+4,w-28,16,{font:"11px sans-serif",color:disabled?"#b1aaa1":C.muted});
+  var ty=y+(h-contentH)/2;
+  text(label,x+w/2,ty,w-28,19,{font:"700 14px sans-serif",color:disabled?"#a49d94":(opt.color||C.ink),align:"center"});
+  if(sub)text(sub,x+w/2,ty+lh+4,w-28,16,{font:"11px sans-serif",color:disabled?"#b1aaa1":C.muted,align:"center"});
   if(node&&!disabled)addHit(node,x,y,w,h,function(){node.click();});
   return h;
 }
