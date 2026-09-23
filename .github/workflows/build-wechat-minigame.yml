@@ -18,11 +18,19 @@ jobs:
           set -e
           rm -rf dist/wechat-minigame
           mkdir -p dist/wechat-minigame
-          cp -R minigame/. dist/wechat-minigame/
-          cp -R data dist/wechat-minigame/data
 
-          # Data modules were written for the browser build. Bind them to the
-          # WeChat Mini Game global object so they can be reused without DOM.
+          # Native Mini Game shell / renderer.
+          cp -R minigame/. dist/wechat-minigame/
+          rm -f dist/wechat-minigame/src/main.js
+
+          # Reuse the exact approved web gameplay/data instead of a rewritten engine.
+          cp app.js dist/wechat-minigame/app-core.js
+          cp board_adapter.js dist/wechat-minigame/app-board.js
+          cp -R data dist/wechat-minigame/data
+          cp -R assets dist/wechat-minigame/assets
+
+          # Data modules were authored for the browser global. Bind them to
+          # the WeChat Mini Game global object without changing their content.
           find dist/wechat-minigame/data -type f -name '*.js' -print0 |             xargs -0 sed -i 's/window\./GameGlobal./g'
 
       - name: Syntax check
@@ -31,8 +39,58 @@ jobs:
           set -e
           node --check dist/wechat-minigame/game.js
           node --check dist/wechat-minigame/src/config.js
-          node --check dist/wechat-minigame/src/main.js
+          node --check dist/wechat-minigame/src/dom-adapter.js
+          node --check dist/wechat-minigame/src/native-bridge.js
+          node --check dist/wechat-minigame/src/renderer.js
+          node --check dist/wechat-minigame/app-core.js
+          node --check dist/wechat-minigame/app-board.js
           find dist/wechat-minigame/data -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Runtime smoke test
+        shell: bash
+        run: |
+          set -e
+          cat > /tmp/minigame-smoke.js <<'SMOKE'
+          const path=require("path");
+          global.GameGlobal={};
+          const noop=()=>{};
+          function grad(){return {addColorStop:noop};}
+          const ctx=new Proxy({
+            scale:noop,clearRect:noop,fillRect:noop,beginPath:noop,moveTo:noop,arcTo:noop,
+            closePath:noop,fill:noop,stroke:noop,drawImage:noop,save:noop,restore:noop,
+            translate:noop,rotate:noop,arc:noop,rect:noop,clip:noop,
+            createLinearGradient:grad,createRadialGradient:grad,
+            measureText:s=>({width:String(s||"").length*7}),
+            fillText:noop
+          },{get:(o,k)=>k in o?o[k]:0,set:(o,k,v)=>(o[k]=v,true)});
+          const canvas={
+            width:390,height:844,
+            getContext:()=>ctx,
+            createImage:()=>({width:0,height:0,onload:null,onerror:null,set src(v){this._src=v;}})
+          };
+          const store={};
+          global.wx={
+            getWindowInfo:()=>({windowWidth:390,windowHeight:844,pixelRatio:1,safeArea:{top:0}}),
+            getSystemInfoSync:()=>({windowWidth:390,windowHeight:844,pixelRatio:1,safeArea:{top:0}}),
+            createCanvas:()=>canvas,
+            createImage:()=>canvas.createImage(),
+            getStorageSync:k=>store[k]||"",
+            setStorageSync:(k,v)=>{store[k]=v;},
+            removeStorageSync:k=>{delete store[k];},
+            clearStorageSync:()=>{for(const k of Object.keys(store))delete store[k];},
+            showShareMenu:noop,onShareAppMessage:noop,shareAppMessage:noop,
+            onTouchStart:noop,onTouchMove:noop,onTouchEnd:noop,
+            showKeyboard:noop,hideKeyboard:noop,onKeyboardInput:noop,onKeyboardConfirm:noop,onKeyboardComplete:noop,
+            showActionSheet:noop,showToast:noop
+          };
+          const entry=process.argv[2];
+          require(path.resolve(entry));
+          if(!global.GameGlobal.__VDOM__)throw new Error("virtual DOM not initialized");
+          if(typeof global.GameGlobal.__MINI_RENDER__!=="function")throw new Error("renderer not initialized");
+          console.log("Mini Game runtime smoke test passed.");
+          setTimeout(()=>process.exit(0),30);
+          SMOKE
+          node /tmp/minigame-smoke.js dist/wechat-minigame/game.js
 
       - name: Privacy scan
         shell: bash
@@ -52,6 +110,12 @@ jobs:
           test -f dist/wechat-minigame/game.js
           test -f dist/wechat-minigame/game.json
           test -f dist/wechat-minigame/project.config.json
+          test -f dist/wechat-minigame/app-core.js
+          test -f dist/wechat-minigame/app-board.js
+          test -f dist/wechat-minigame/src/renderer.js
+          test -f dist/wechat-minigame/assets/ui/medical-logo.webp
+          test -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
+          test ! -f dist/wechat-minigame/src/main.js
           grep -q '"compileType": "game"' dist/wechat-minigame/project.config.json
           grep -q '"appid": "wx593dd9974d74c564"' dist/wechat-minigame/project.config.json
           echo "Mini Game package structure verified."
@@ -59,7 +123,7 @@ jobs:
       - name: Upload mini game artifact
         uses: actions/upload-artifact@v4
         with:
-          name: medical-life-wechat-minigame
+          name: medical-life-wechat-minigame-web-parity
           path: dist/wechat-minigame
           if-no-files-found: error
           retention-days: 90
