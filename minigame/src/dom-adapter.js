@@ -260,7 +260,7 @@ var ids = [
 "boardModeLabel","legacyMessage","messageCount","postMessageBtn","messageFeedback","messageTickerTrack","viewAllMessagesBtn","allMessagesPanel","allMessageCount","closeAllMessagesBtn","messageWall",
 "endingShareBtn","endingRestartBtn",
 "endingBlessingOverlay","endingBlessingText","blessingMessageBtn","blessingCloseBtn",
-"admissionOverlay","admissionSearching","admissionResult","admissionQuerySchool","admissionCountdown","admissionQueryBar","admissionResultIcon","admissionResultTitle","admissionResultText","admissionResultMeta","admissionResultBtn",
+"admissionOverlay","admissionSearching","admissionResult","admissionQuerySchool","admissionCountdown","admissionQueryBar","admissionResultIcon","admissionResultTitle","admissionResultText","admissionResultMeta","admissionRewardText","admissionResultBtn",
 "supplyOverlay","supplyOptions","closeSupplyBtn",
 "crisisOverlay","crisisIcon","crisisTitle","crisisText","crisisUseBtn","crisisAdBtn","crisisContinueBtn"
 ];
