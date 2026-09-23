@@ -732,17 +732,36 @@ function drawGame(y){
   rectFor(E.gameScreen,shellX,y,shellW,0);
   return y;
 }
-function parseEndingStats(){
-  var html=E.endingStats.rawHTML||E.endingStats.innerHTML||"",out=[],m;
-  var re=new RegExp('<div class="ending-stat"><span>([\\\\s\\\\S]*?)</span><strong>([\\\\s\\\\S]*?)</strong></div>',"gi");
-  while((m=re.exec(html)))out.push({label:plain(m[1]),value:plain(m[2])});
+function parseStructuredRows(html,className){
+  var out=[];
+  var source=String(html||"");
+  var marker='<div class="'+className+'">';
+  var pos=0;
+  while(true){
+    var start=source.indexOf(marker,pos);
+    if(start<0)break;
+    var close=source.indexOf("</div>",start+marker.length);
+    if(close<0)break;
+    var block=source.slice(start+marker.length,close);
+    var s1=block.indexOf("<span>");
+    var s2=s1>=0?block.indexOf("</span>",s1+6):-1;
+    var b1=block.indexOf("<strong>");
+    var b2=b1>=0?block.indexOf("</strong>",b1+8):-1;
+    if(s1>=0&&s2>=0&&b1>=0&&b2>=0){
+      out.push({
+        label:plain(block.slice(s1+6,s2)),
+        value:plain(block.slice(b1+8,b2))
+      });
+    }
+    pos=close+6;
+  }
   return out;
 }
+function parseEndingStats(){
+  return parseStructuredRows(E.endingStats.rawHTML||E.endingStats.innerHTML||"","ending-stat");
+}
 function parseEndingJourney(){
-  var html=E.endingJourney.rawHTML||E.endingJourney.innerHTML||"",out=[],m;
-  var re=new RegExp('<div class="journey-item"><span>([\\\\s\\\\S]*?)</span><strong>([\\\\s\\\\S]*?)</strong></div>',"gi");
-  while((m=re.exec(html)))out.push({label:plain(m[1]),value:plain(m[2])});
-  return out;
+  return parseStructuredRows(E.endingJourney.rawHTML||E.endingJourney.innerHTML||"","journey-item");
 }
 function parseSpanList(html){
   var out=[],m,re=new RegExp("<span[^>]*>([\\\\s\\\\S]*?)</span>","gi");
