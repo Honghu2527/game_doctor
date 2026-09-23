@@ -396,17 +396,6 @@ replace_once(
 )
 
 replace_once(
-'''      var meta="";
-      if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
-''',
-'''      var meta="";
-      if(c.recoveryBreak)meta+="<span class=\"choice-meta\">恢复选项 · 本场景一次</span>";
-      if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
-''',
-"mark study recovery choices"
-)
-
-replace_once(
 '''  function choose(choice){
     var current=allEvents()[state.scene];
     if(!current)return;
