@@ -207,7 +207,7 @@ function ghostButton(node,x,y,w,label,sub,opt){
   if(node&&!disabled)addHit(node,x,y,w,h,function(){node.click();});
   return h;
 }
-function rawNodeButton(node,x,y,w,opt){
+function measureRawNodeButtonHeight(node,w,opt){
   opt=opt||{};
   var label=extractTag(node.rawHTML||node.innerHTML,"b")||plain(node.rawHTML||node.innerHTML)||node.textContent||"选择";
   var sub=extractTag(node.rawHTML||node.innerHTML,"small");
@@ -216,7 +216,17 @@ function rawNodeButton(node,x,y,w,opt){
   var lh=measureTextHeight(label,w-30,opt.titleFont||"700 14px sans-serif",20);
   var sh=sub?measureTextHeight(sub,w-30,"11px sans-serif",16):0;
   var extra=(route||meta)?24:0;
-  var h=Math.max(58,14+lh+(sub?5+sh:0)+extra+14);
+  return Math.max(58,14+lh+(sub?5+sh:0)+extra+14);
+}
+function rawNodeButton(node,x,y,w,opt){
+  opt=opt||{};
+  var label=extractTag(node.rawHTML||node.innerHTML,"b")||plain(node.rawHTML||node.innerHTML)||node.textContent||"选择";
+  var sub=extractTag(node.rawHTML||node.innerHTML,"small");
+  var route=extractClass(node.rawHTML||node.innerHTML,"route-chip");
+  var meta=extractClass(node.rawHTML||node.innerHTML,"choice-meta");
+  var lh=measureTextHeight(label,w-30,opt.titleFont||"700 14px sans-serif",20);
+  var sh=sub?measureTextHeight(sub,w-30,"11px sans-serif",16):0;
+  var h=measureRawNodeButtonHeight(node,w,opt);
   var disabled=node.disabled;
   var fill=disabled?"#f2efe9":(opt.fill||"#fffdf8");
   rr(x,y,w,h,15,fill,disabled?"#ded8ce":(opt.stroke||C.line));
@@ -583,52 +593,75 @@ function drawStatus(y){
 }
 function drawInventory(y){
   var x=shellX,w=shellW,children=E.inventoryItems.children||[];
-  var h=children.length?132:86;
+  var cols=2,gap=8,pad=14,cardH=48;
+  var rows=Math.max(0,Math.ceil(children.length/cols));
+  var gridH=rows?rows*cardH+(rows-1)*gap:0;
+  var h=78+(gridH?gridH+14:0);
   rr(x,y,w,h,18,"rgba(255,253,248,.97)",C.line);
   text("TOOLKIT",x+14,y+11,w-28,12,{font:"800 8px sans-serif",color:"#9a7540"});
   text("🎒 人生道具",x+14,y+27,w-28,18,{font:"800 13px sans-serif",color:"#22373b"});
   text(E.inventoryLockNote.textContent||"",x+14,y+49,w-108,13,{font:"8px sans-serif",color:"#87908f",maxLines:2});
+
   var realAd=G.AD_SERVICE&&G.AD_SERVICE.isRealAdAvailable&&G.AD_SERVICE.isRealAdAvailable();
   if(realAd&&!E.openSupplyBtn.hidden){
     var bx=x+w-92,by=y+18;rr(bx,by,78,30,10,"#fff",C.line);
     text(E.openSupplyBtn.textContent||"获取补给",bx+39,by+8,68,14,{font:"700 9px sans-serif",color:C.ink,align:"center"});
     if(!E.openSupplyBtn.disabled)addHit(E.openSupplyBtn,bx,by,78,30,function(){E.openSupplyBtn.click();});
   }
+
   if(children.length){
-    var ix=x+14,iy=y+78,cw=Math.min(126,(w-36)/2);
-    children.slice(0,2).forEach(function(n){
-      var name=extractTag(n.rawHTML,"b"),count=extractTag(n.rawHTML,"small"),icon=extractClass(n.rawHTML,"inventory-icon")||"•";
-      rr(ix,iy,cw,41,12,n.disabled?"#f1ede7":"#fffdf8","#ded6ca");
-      rr(ix+7,iy+7,27,27,9,"#e8f1ed");
-      text(icon,ix+20.5,iy+13,24,14,{font:"11px sans-serif",color:"#315f57",align:"center"});
-      text(name,ix+41,iy+7,cw-49,14,{font:"700 9px sans-serif",color:"#304347",maxLines:1});
-      text(count,ix+41,iy+22,cw-49,12,{font:"8px sans-serif",color:"#7c8786",maxLines:1});
-      if(!n.disabled)addHit(n,ix,iy,cw,41,function(){E.inventoryItems.dispatchEvent({type:"click",target:n});});
-      ix+=cw+8;
+    var cw=(w-pad*2-gap)/2;
+    children.forEach(function(n,idx){
+      var row=Math.floor(idx/cols),col=idx%cols;
+      var ix=x+pad+col*(cw+gap),iy=y+78+row*(cardH+gap);
+      var name=extractTag(n.rawHTML,"b");
+      var count=extractTag(n.rawHTML,"small");
+      var icon=extractClass(n.rawHTML,"inventory-icon")||"•";
+      var action=extractTag(n.rawHTML,"em")||(n.disabled?"暂无":"使用");
+      rr(ix,iy,cw,cardH,12,n.disabled?"#f1ede7":"#fffdf8","#ded6ca");
+      rr(ix+7,iy+8,29,29,9,n.disabled?"#e8e5df":"#e8f1ed");
+      text(icon,ix+21.5,iy+15,24,14,{font:"11px sans-serif",color:n.disabled?"#9b9993":"#315f57",align:"center"});
+      text(name,ix+43,iy+7,cw-51,14,{font:"700 9px sans-serif",color:n.disabled?"#99948d":"#304347",maxLines:1});
+      text(count+" · "+action,ix+43,iy+25,cw-51,12,{font:"8px sans-serif",color:n.disabled?"#aaa59e":"#6f7d7b",maxLines:1});
+      if(!n.disabled)addHit(n,ix,iy,cw,cardH,function(){E.inventoryItems.dispatchEvent({type:"click",target:n});});
     });
   }
   return y+h+14;
 }
 function drawStory(y){
   var x=shellX,w=shellW,choices=E.choices.children||[];
-  var textH=measureTextHeight(E.sceneText.textContent,w-44,"14px sans-serif",24);
-  var titleH=measureTextHeight(E.sceneTitle.textContent,w-44,"800 25px serif",31);
-  var banners=(!E.criticalBanner.hidden?80:0)+(!E.opportunityBanner.hidden?74:0);
+  var innerW=w-40;
+  var titleH=measureTextHeight(E.sceneTitle.textContent,innerW,"800 25px serif",31);
+  var sceneTextH=measureTextHeight(E.sceneText.textContent,innerW,"14px sans-serif",24);
+  var effectH=measureTextHeight(E.effectHint.textContent,innerW,"10px sans-serif",17);
+  var criticalBlock=!E.criticalBanner.hidden?76:0;
+  var opportunityBlock=!E.opportunityBanner.hidden?70:0;
+  var hintBlock=0;
+  if(!E.decisionHintPanel.hidden){
+    var measuredHint=Math.max(64,measureTextHeight(plain(E.decisionHintContent.innerHTML),w-68,"9px sans-serif",15)+36);
+    hintBlock=measuredHint+12;
+  }
   var choicesH=choices.reduce(function(sum,n){
-    var lab=extractTag(n.rawHTML,"b"),sub=extractTag(n.rawHTML,"small");
-    return sum+Math.max(58,28+measureTextHeight(lab,w-74,"700 14px sans-serif",20)+measureTextHeight(sub,w-74,"11px sans-serif",16))+10;
+    return sum+measureRawNodeButtonHeight(n,innerW,{})+10;
   },0);
-  var ph=145+banners+titleH+textH+70+choicesH;
+
+  /* This mirrors every cy increment below exactly, plus 20px bottom padding. */
+  var ph=20+42+18+criticalBlock+opportunityBlock+
+    (titleH+10)+(sceneTextH+12)+(effectH+18)+hintBlock+choicesH+20;
+
   var fill=gradient(x,y,x+w,y+ph,[[0,"rgba(255,254,250,.99)"],[1,"rgba(249,245,237,.98)"]]);
   withShadow("rgba(31,48,50,.08)",24,9,function(){rr(x,y,w,ph,20,fill,C.line);});
   vdom.storyPanel._rect={x:x,docY:y,w:w,h:ph};
+
   var cy=y+20;
   var chipW=pill(x+20,cy,E.stageChip.textContent||"当前阶段",{fill:"#e0eee9",color:"#214d46",font:"800 9px sans-serif",h:25,padX:9,lineH:12});
   pill(x+20+chipW+7,cy,E.typeChip.textContent||"主线",{fill:"#f3e4d5",color:"#79522e",font:"800 9px sans-serif",h:25,padX:9,lineH:12});
   text(E.yearText.textContent||"",x+w-20,cy+6,w/3,13,{font:"9px sans-serif",color:C.muted,align:"right"});cy+=42;
+
   rr(x+20,cy,w-40,4,2,"#e9e1d6");
   var pct=parseFloat(E.progressBar.style.width||"0")||0;
   rr(x+20,cy,(w-40)*clamp(pct/100,0,1),4,2,C.green);cy+=18;
+
   if(!E.criticalBanner.hidden){
     var hh=68;rr(x+20,cy,w-40,hh,16,"#fff0ea","#e5a497");
     text(E.criticalTitle.textContent||"⚠️ 关键人生选择",x+34,cy+11,w-68,18,{font:"800 12px sans-serif",color:"#7d2f2f"});
@@ -639,19 +672,23 @@ function drawStory(y){
     text("🎯 竞争性机会",x+34,cy+10,w-68,18,{font:"800 12px sans-serif",color:"#345b84"});
     text(E.opportunityText.textContent||"",x+34,cy+30,w-68,15,{font:"9px sans-serif",color:"#345b84",maxLines:2});cy+=oh+8;
   }
+
   cy+=text(E.sceneTitle.textContent||"",x+20,cy,w-40,31,{font:"800 25px serif",color:"#1b3034"})+10;
   cy+=text(E.sceneText.textContent||"",x+20,cy,w-40,24,{font:"14px sans-serif",color:"#48595b"})+12;
   cy+=text(E.effectHint.textContent||"",x+20,cy,w-40,17,{font:"10px sans-serif",color:"#6e7d7e"})+18;
+
   if(!E.decisionHintPanel.hidden){
     var dh=Math.max(64,measureTextHeight(plain(E.decisionHintContent.innerHTML),w-68,"9px sans-serif",15)+36);
     rr(x+20,cy,w-40,dh,15,"#fff9e8","#d8ca9d");
     text("💡 决策提示",x+34,cy+11,w-68,17,{font:"800 11px sans-serif",color:"#745922"});
     text(plain(E.decisionHintContent.innerHTML),x+34,cy+31,w-68,15,{font:"9px sans-serif",color:"#8b8069",maxLines:6});cy+=dh+12;
   }
+
   choices.forEach(function(n){
     var accent=vdom.storyPanel.classList.contains("opportunity-scene")?"rgba(52,91,132,.32)":null;
     cy+=rawNodeButton(n,x+20,cy,w-40,{accent:accent})+10;
   });
+
   return y+ph+14;
 }
 function parseLogs(){
