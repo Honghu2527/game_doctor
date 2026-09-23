@@ -1,0 +1,14 @@
+{
+  "appid": "wx593dd9974d74c564",
+  "compileType": "game",
+  "projectname": "medical-life-simulator",
+  "description": "医学生成长模拟",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false,
+    "checkSiteMap": false
+  }
+}
