@@ -10,10 +10,8 @@ var info=wxapi.getWindowInfo?wxapi.getWindowInfo():wxapi.getSystemInfoSync();
 var W=info.windowWidth||375;
 var H=info.windowHeight||667;
 var DEVICE_DPR=info.pixelRatio||1;
-/* 静止画面使用接近设备原生分辨率，保证 iPhone 文字和卡片清晰。 */
+/* 全程高清：滚动和静止都按接近设备原生 DPR 绘制，不再使用低清滚动帧。 */
 var STATIC_DPR=Math.min(3,Math.max(1,DEVICE_DPR));
-/* 滑动时只在低分辨率离屏 Canvas 上绘制，松手后立即恢复高清。 */
-var SCROLL_DPR=1.25;
 var DPR=STATIC_DPR;
 var SAFE_TOP=(info.safeArea&&info.safeArea.top)||0;
 var canvas=G.__SCREEN_CANVAS__||wxapi.createCanvas();
@@ -21,30 +19,6 @@ canvas.width=Math.round(W*STATIC_DPR);
 canvas.height=Math.round(H*STATIC_DPR);
 var mainCtx=canvas.getContext("2d");
 var ctx=mainCtx;
-
-var scrollCanvas=null;
-var scrollCtx=null;
-try{
-  if(wxapi.createOffscreenCanvas){
-    scrollCanvas=wxapi.createOffscreenCanvas({
-      type:"2d",
-      width:Math.round(W*SCROLL_DPR),
-      height:Math.round(H*SCROLL_DPR)
-    });
-  }else{
-    scrollCanvas=wxapi.createCanvas();
-    scrollCanvas.width=Math.round(W*SCROLL_DPR);
-    scrollCanvas.height=Math.round(H*SCROLL_DPR);
-  }
-  if(scrollCanvas){
-    scrollCanvas.width=Math.round(W*SCROLL_DPR);
-    scrollCanvas.height=Math.round(H*SCROLL_DPR);
-    scrollCtx=scrollCanvas.getContext("2d");
-  }
-}catch(e){
-  scrollCanvas=null;
-  scrollCtx=null;
-}
 G.canvas=canvas;
 
 var C={
@@ -1155,23 +1129,8 @@ function renderScene(targetCtx,targetCanvas,targetDpr,collectHits){
   ctx=prevCtx;
   DPR=prevDpr;
 }
-function blitScrollCanvas(){
-  if(!scrollCanvas||!scrollCtx)return false;
-  renderScene(scrollCtx,scrollCanvas,SCROLL_DPR,false);
-  if(mainCtx.setTransform)mainCtx.setTransform(1,0,0,1,0,0);
-  mainCtx.clearRect(0,0,canvas.width,canvas.height);
-  try{
-    mainCtx.imageSmoothingEnabled=true;
-    if("imageSmoothingQuality" in mainCtx)mainCtx.imageSmoothingQuality="medium";
-  }catch(e){}
-  mainCtx.drawImage(scrollCanvas,0,0,scrollCanvas.width,scrollCanvas.height,0,0,canvas.width,canvas.height);
-  if(mainCtx.setTransform)mainCtx.setTransform(STATIC_DPR,0,0,STATIC_DPR,0,0);
-  return true;
-}
 function render(){
-  if(fastScrolling&&scrollCtx&&scrollCanvas){
-    if(blitScrollCanvas())return;
-  }
+  /* 始终在主屏高清 Canvas 上绘制；滑动时仅关闭阴影等昂贵效果，不降低分辨率。 */
   renderScene(mainCtx,canvas,STATIC_DPR,true);
 }
 function setScroll(v){
@@ -1220,7 +1179,7 @@ function scheduleScrollRender(){
   setTimeout(function(){
     scrollRenderPending=false;
     render();
-  },16);
+  },33);
 }
 
 wxapi.onTouchStart(function(ev){
