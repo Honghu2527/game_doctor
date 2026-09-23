@@ -108,6 +108,13 @@ jobs:
           require(path.resolve(entry));
           if(!global.GameGlobal.__VDOM__)throw new Error("virtual DOM not initialized");
           if(typeof global.GameGlobal.__MINI_RENDER__!=="function")throw new Error("renderer not initialized");
+          if(typeof global.GameGlobal.__ENDING_PARSE__!=="function")throw new Error("ending parser not initialized");
+          const statsSample='<div class="ending-stat"><span>知识</span><strong>95</strong></div><div class="ending-stat"><span>体力</span><strong>68</strong></div>';
+          const journeySample='<div class="journey-item"><span>本科</span><strong>温州医科大学</strong></div><div class="journey-item"><span>硕士</span><strong>北京大学医学部</strong></div>';
+          const parsedStats=global.GameGlobal.__ENDING_PARSE__(statsSample,"ending-stat");
+          const parsedJourney=global.GameGlobal.__ENDING_PARSE__(journeySample,"journey-item");
+          if(parsedStats.length!==2||parsedStats[0].label!=="知识"||parsedStats[1].value!=="68")throw new Error("ending stats parser failed");
+          if(parsedJourney.length!==2||parsedJourney[0].value!=="温州医科大学"||parsedJourney[1].label!=="硕士")throw new Error("career archive parser failed");
           if(canvasCreateCount!==1)throw new Error("expected exactly one onscreen canvas, got "+canvasCreateCount);
           if(global.GameGlobal.canvas!==canvas)throw new Error("renderer is not using reserved onscreen canvas");
           const E=global.GameGlobal.__VDOM__.elements;
