@@ -297,5 +297,15 @@ replace_once(
 "claim admission celebration reward"
 )
 
+replace_once(
+'''    el("admissionResultBtn").textContent=r.success?"确认录取 · 写入教育档案":"确认结果 · 继续下一步";
+''',
+'''    el("admissionResultBtn").textContent=r.success
+      ?(celebration?"收下奖励 · 写入教育档案":"确认录取 · 写入教育档案")
+      :"确认结果 · 继续下一步";
+''',
+"admission reward confirmation label"
+)
+
 path.write_text(src, encoding="utf-8")
 print("Mini Game core behavior patches applied.")
