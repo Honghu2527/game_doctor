@@ -156,10 +156,13 @@ VirtualElement.prototype.blur=function(){
   try{if(wxapi.hideKeyboard)wxapi.hideKeyboard();}catch(e){}
 };
 VirtualElement.prototype.scrollIntoView=function(){
-  if(typeof G.__MINI_SCROLL_TO__==="function")G.__MINI_SCROLL_TO__(999999);
+  var top=this._rect&&isFinite(this._rect.docY)?Math.max(0,this._rect.docY-12):999999;
+  if(typeof G.__MINI_SCROLL_TO__==="function")G.__MINI_SCROLL_TO__(top);
 };
 VirtualElement.prototype.getBoundingClientRect=function(){
-  return {top:0,left:0,width:0,height:0,right:0,bottom:0};
+  var r=this._rect||{docY:0,x:0,w:0,h:0};
+  var top=(r.docY||0)-(G.__scrollY||0);
+  return {top:top,left:r.x||0,width:r.w||0,height:r.h||0,right:(r.x||0)+(r.w||0),bottom:top+(r.h||0)};
 };
 VirtualElement.prototype.matches=function(sel){
   return matchesNode(this,sel);
