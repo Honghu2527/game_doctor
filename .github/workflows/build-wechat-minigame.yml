@@ -71,11 +71,12 @@ jobs:
             getContext:()=>ctx,
             createImage:()=>({width:0,height:0,onload:null,onerror:null,set src(v){this._src=v;}})
           };
+          let canvasCreateCount=0;
           const store={};
           global.wx={
             getWindowInfo:()=>({windowWidth:390,windowHeight:844,pixelRatio:1,safeArea:{top:0}}),
             getSystemInfoSync:()=>({windowWidth:390,windowHeight:844,pixelRatio:1,safeArea:{top:0}}),
-            createCanvas:()=>canvas,
+            createCanvas:()=>{canvasCreateCount+=1;return canvas;},
             createImage:()=>canvas.createImage(),
             getStorageSync:k=>store[k]||"",
             setStorageSync:(k,v)=>{store[k]=v;},
@@ -90,6 +91,8 @@ jobs:
           require(path.resolve(entry));
           if(!global.GameGlobal.__VDOM__)throw new Error("virtual DOM not initialized");
           if(typeof global.GameGlobal.__MINI_RENDER__!=="function")throw new Error("renderer not initialized");
+          if(canvasCreateCount!==1)throw new Error("expected exactly one onscreen canvas, got "+canvasCreateCount);
+          if(global.GameGlobal.canvas!==canvas)throw new Error("renderer is not using reserved onscreen canvas");
           const E=global.GameGlobal.__VDOM__.elements;
           function visible(){
             for(const id of ["startScreen","gaokaoScreen","schoolScreen","letterScreen","gameScreen","endingScreen"]){
