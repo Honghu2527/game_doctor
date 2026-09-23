@@ -160,60 +160,10 @@ replace_once(
 )
 
 replace_once(
-'''  function performRevive(method){
-    if(!pendingChoiceContinuation||!currentCrisisStat||!state)return false;
-    var rs=reviveStatus();
-    if(rs.count>=1)return false;
-    if(method==="share"&&rs.shareUsed)return false;
-    if(method==="ad"&&rs.adUsed)return false;
-
-    if(method==="share")state.shareReviveUsed=true;
-    if(method==="ad")state.adReviveUsed=true;
-    state.reviveCount=1;
-
-    var stat=currentCrisisStat;
-    state.stats[stat]=Math.max(Number(state.stats[stat]||0),25);
-    if(state.stats.energy<=0)state.stats.energy=18;
-    if(state.stats.mental<=0)state.stats.mental=18;
-    state.crisisWarned=state.crisisWarned||{energy:false,mental:false};
-    state.crisisWarned.energy=false;
-    state.crisisWarned.mental=false;
-    state.shareNudgeVisible=method==="ad";
-
-    addLog("人生复活",(method==="share"?"完成分享后复活":"完整观看激励视频后复活")+"。本局唯一一次复活机会已经使用。");
-    closeCrisis();
-    saveState();
-    resumePendingChoice();
-    return true;
-  }
+'''    addLog("人生复活",(method==="share"?"完成分享后复活":"完整观看激励视频后复活")+"。本局唯一一次复活机会已经使用。");
 ''',
-'''  function performRevive(method){
-    if(!pendingChoiceContinuation||!currentCrisisStat||!state)return false;
-    var rs=reviveStatus();
-    if(rs.count>=1)return false;
-    if(method==="share"&&rs.shareUsed)return false;
-    if(method==="ad"&&rs.adUsed)return false;
-
-    if(method==="share")state.shareReviveUsed=true;
-    if(method==="ad")state.adReviveUsed=true;
-    state.reviveCount=1;
-
-    var stat=currentCrisisStat;
-    state.stats[stat]=Math.max(Number(state.stats[stat]||0),25);
-    if(state.stats.energy<=0)state.stats.energy=18;
-    if(state.stats.mental<=0)state.stats.mental=18;
-    state.crisisWarned=state.crisisWarned||{energy:false,mental:false};
-    state.crisisWarned.energy=false;
-    state.crisisWarned.mental=false;
-    state.shareNudgeVisible=method==="ad";
-
-    var reviveLabel=method==="free"?"首发版本免费复活":(method==="share"?"完成分享后复活":"完整观看激励视频后复活");
+'''    var reviveLabel=method==="free"?"首发版本免费复活":(method==="share"?"完成分享后复活":"完整观看激励视频后复活");
     addLog("人生复活",reviveLabel+"。本局唯一一次复活机会已经使用。");
-    closeCrisis();
-    saveState();
-    resumePendingChoice();
-    return true;
-  }
 ''',
 "free revive support"
 )
