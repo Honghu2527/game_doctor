@@ -82,9 +82,7 @@ replace_once(
     state.flags.add(reward.flag);
     state.stats.energy=clamp(Number(state.stats.energy||0)+20,0,100);
     state.stats.mental=clamp(Number(state.stats.mental||0)+20,0,100);
-    grantItem("energy_card",1);
-    grantItem("mental_card",1);
-    addLog("毕业旅行","恭喜考上"+reward.label+"。毕业旅行让你暂时从备考压力中恢复：体力 +"+reward.energyGain+"，心理 +"+reward.mentalGain+"；获得体力恢复卡 ×1、心理恢复卡 ×1。");
+    addLog("毕业旅行","恭喜考上"+reward.label+"。毕业旅行让你暂时从备考压力中恢复：体力 +"+reward.energyGain+"，心理 +"+reward.mentalGain+"。");
     return reward;
   }
 ''',
@@ -279,7 +277,7 @@ replace_once(
       :("这一次，"+r.school.name+" 没有向你发出录取通知。");
     var celebration=r.success?admissionCelebrationInfo(a):null;
     el("admissionRewardText").textContent=celebration
-      ?("🎉 恭喜你考上"+celebration.label+"！毕业旅行后：体力 +"+celebration.energyGain+" · 心理 +"+celebration.mentalGain+" · 体力恢复卡 ×1 · 心理恢复卡 ×1")
+      ?("🎉 恭喜你考上"+celebration.label+"！毕业旅行后：体力 +"+celebration.energyGain+" · 心理 +"+celebration.mentalGain)
       :"";
     el("admissionResultMeta").innerHTML=
 ''',
@@ -301,10 +299,135 @@ replace_once(
 '''    el("admissionResultBtn").textContent=r.success?"确认录取 · 写入教育档案":"确认结果 · 继续下一步";
 ''',
 '''    el("admissionResultBtn").textContent=r.success
-      ?(celebration?"收下奖励 · 写入教育档案":"确认录取 · 写入教育档案")
+      ?(celebration?"结束毕业旅行 · 写入教育档案":"确认录取 · 写入教育档案")
       :"确认结果 · 继续下一步";
 ''',
 "admission reward confirmation label"
+)
+
+replace_once(
+'''    if(/医学专科|本科|大一|白大褂|见习|实训/.test(label))m=.56;
+    else if(/本科衔接|专升本/.test(label))m=.62;
+    else if(/研究生|硕士|临床专硕|学硕/.test(label))m=.72;
+    else if(/博士后|科研职业|博士/.test(label))m=.78;
+    else if(/规培|住院医师/.test(label))m=1.00;
+    else if(/主治|高级职称|职业成熟|青年医生/.test(label))m=.82;
+''',
+'''    if(/医学专科|本科|大一|白大褂|见习|实训/.test(label))m=.56;
+    else if(/本科衔接|专升本/.test(label))m=.62;
+    /* 硕士与博士阶段压力更高：同样的学习/科研选择会消耗更多体力与心理。 */
+    else if(/研究生|硕士|临床专硕|学硕/.test(label))m=.92;
+    else if(/博士/.test(label)&&!/博士后/.test(label))m=1.06;
+    else if(/博士后|科研职业/.test(label))m=.88;
+    else if(/规培|住院医师/.test(label))m=1.00;
+    else if(/主治|高级职称|职业成熟|青年医生/.test(label))m=.82;
+''',
+"higher master and phd pressure"
+)
+
+replace_once(
+'''  function renderDecisionHint(e){
+    if(!el("decisionHintPanel"))return;
+    var show=!!(state&&state.hintScene===state.scene&&!isCompetitiveScene(state.scene,e));
+    el("decisionHintPanel").hidden=!show;
+    if(show)el("decisionHintContent").innerHTML=decisionHintHtml(e);
+  }
+
+''',
+'''  function renderDecisionHint(e){
+    if(!el("decisionHintPanel"))return;
+    var show=!!(state&&state.hintScene===state.scene&&!isCompetitiveScene(state.scene,e));
+    el("decisionHintPanel").hidden=!show;
+    if(show)el("decisionHintContent").innerHTML=decisionHintHtml(e);
+  }
+
+  function studyRecoveryChoices(e){
+    if(!state||!e||isCompetitiveScene(state.scene,e))return [];
+    var label=((e.stage||"")+" "+(e.title||"")+" "+(state.route||""));
+    var phase=null;
+    if(/博士/.test(label)&&!/博士后/.test(label))phase="phd";
+    else if(/研究生|硕士|临床专硕|学硕/.test(label))phase="master";
+    if(!phase)return [];
+    var flag="studyRecovery_"+state.scene;
+    if(state.flags.has(flag))return [];
+    if(state.stats.energy>58&&state.stats.mental>58)return [];
+
+    var out=[];
+    if(state.stats.energy<=58){
+      out.push({
+        text:"今晚不硬撑，早点睡一觉",
+        sub:"暂时放下任务，恢复体力，也让情绪缓下来。",
+        effects:{energy:14,mental:5},
+        recoveryBreak:flag,
+        recoveryLabel:"早点休息"
+      });
+    }
+    if(state.stats.mental<=58){
+      out.push({
+        text:"周末出去走走，给自己放半天假",
+        sub:"短暂离开实验室或病房，恢复心理，也补回一点体力。",
+        effects:{energy:7,mental:14,money:-1},
+        recoveryBreak:flag,
+        recoveryLabel:"周末放松"
+      });
+    }
+    return out;
+  }
+
+''',
+"master phd recovery choice helper"
+)
+
+replace_once(
+'''    var box=el("choices");
+    box.innerHTML="";
+    e.choices.filter(choiceVisible).forEach(function(c){
+      var ok=requirementsMet(c.requires)&&(c.jobEligible!==false);
+      var b=document.createElement("button");
+''',
+'''    var box=el("choices");
+    box.innerHTML="";
+    var visibleChoices=studyRecoveryChoices(e).concat(e.choices.filter(choiceVisible));
+    visibleChoices.forEach(function(c){
+      var ok=requirementsMet(c.requires)&&(c.jobEligible!==false);
+      var b=document.createElement("button");
+''',
+"inject study recovery choices"
+)
+
+replace_once(
+'''      var meta="";
+      if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
+''',
+'''      var meta="";
+      if(c.recoveryBreak)meta+="<span class=\"choice-meta\">恢复选项 · 本场景一次</span>";
+      if(c.route)meta+="<span class=\"route-chip\">→ "+escapeHtml(c.route)+"</span>";
+''',
+"mark study recovery choices"
+)
+
+replace_once(
+'''  function choose(choice){
+    var current=allEvents()[state.scene];
+    if(!current)return;
+
+    applyEffects(choice.effects);
+''',
+'''  function choose(choice){
+    var current=allEvents()[state.scene];
+    if(!current)return;
+
+    if(choice.recoveryBreak){
+      applyEffects(choice.effects);
+      state.flags.add(choice.recoveryBreak);
+      addLog("恢复时间",(choice.recoveryLabel||"短暂休息")+" → "+effectText(choice.effects));
+      saveState();render();scrollAfterRender();
+      return;
+    }
+
+    applyEffects(choice.effects);
+''',
+"handle one-time study recovery choices"
 )
 
 path.write_text(src, encoding="utf-8")
