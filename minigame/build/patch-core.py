@@ -34,10 +34,13 @@ replace_once(
   function grantStarterItems(){
     if(!state||state.starterItemsGranted)return;
     state.starterItemsGranted=true;
-    grantItem("energy_card",1);
+    state.milestoneItemRewards=state.milestoneItemRewards||{};
+    if(state.scene)state.milestoneItemRewards[state.scene]="starter";
+    /* 初始体力恢复卡固定为 1 张，避免与首个关键节点奖励叠加成 2 张。 */
+    setItemCount("energy_card",1);
     grantItem("mental_card",1);
     grantItem("hint_card",1);
-    addLog("入学补给","完成入学，获得基础道具补给。后续关键人生节点仍可继续获得道具。");
+    addLog("入学补给","完成入学，获得体力恢复卡 ×1、心理恢复卡 ×1、决策提示卡 ×1。后续关键人生节点仍可继续获得道具。");
   }
 
   function grantMilestoneItem(scene){
