@@ -150,7 +150,7 @@ jobs:
           if(parsedStats.length!==2||parsedStats[0].label!=="知识"||parsedStats[1].value!=="68")throw new Error("ending stats parser failed");
           if(parsedJourney.length!==2||parsedJourney[0].value!=="温州医科大学"||parsedJourney[1].label!=="硕士")throw new Error("career archive parser failed");
           if(canvasCreateCount!==1)throw new Error("expected exactly one onscreen canvas, got "+canvasCreateCount);
-          if(offscreenCreateCount!==1)throw new Error("expected one scroll offscreen canvas, got "+offscreenCreateCount);
+          if(offscreenCreateCount!==0)throw new Error("low-resolution scroll canvas must not be used");
           if(global.GameGlobal.canvas!==canvas)throw new Error("renderer is not using reserved onscreen canvas");
           const E=global.GameGlobal.__VDOM__.elements;
           function visible(){
@@ -180,6 +180,10 @@ jobs:
             if((E.inventoryLockNote.textContent||"").includes("广告"))throw new Error("ad copy leaked into no-ad inventory UI");
             const inv=E.inventoryItems.rawHTML||E.inventoryItems.innerHTML||"";
             if(!inv.includes("体力恢复卡")||!inv.includes("心理恢复卡")||!inv.includes("决策提示卡"))throw new Error("starter items missing");
+            const energyStart=inv.indexOf('data-use-item="energy_card"');
+            const energyEnd=energyStart>=0?inv.indexOf("</button>",energyStart):-1;
+            const energyHtml=energyStart>=0&&energyEnd>energyStart?inv.slice(energyStart,energyEnd):"";
+            if(!energyHtml.includes("<small>×1</small>"))throw new Error("starter energy card must be exactly x1");
             const choice=E.choices.children[0];
             if(!choice)throw new Error("story choices not rendered");
             choice.click();
