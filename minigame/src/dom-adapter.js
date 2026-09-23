@@ -320,28 +320,22 @@ var localStorageObj={
   clear:function(){try{wxapi.clearStorageSync();}catch(e){}}
 };
 
-G.document=documentObj;
-G.localStorage=localStorageObj;
-G.window=G;
-G.navigator=G.navigator||{};
-G.location=G.location||{href:""};
+/* Do not overwrite WeChat's readonly Window built-ins such as document.
+   Keep the browser compatibility objects under private names instead. */
+G.__DOC__=documentObj;
+G.__STORAGE__=localStorageObj;
 G.__scrollY=0;
-try{
-  Object.defineProperty(G,"scrollY",{configurable:true,get:function(){return G.__scrollY||0;}});
-}catch(e){G.scrollY=0;}
-G.scrollTo=function(arg){
+
+G.__SCROLL_TO__=function(arg){
   var top=typeof arg==="number"?arg:(arg&&arg.top)||0;
   G.__scrollY=Math.max(0,Number(top)||0);
   if(typeof G.__MINI_SCROLL_TO__==="function")G.__MINI_SCROLL_TO__(G.__scrollY);
 };
-G.setTimeout=typeof setTimeout==="function"?setTimeout:function(){};
-G.clearTimeout=typeof clearTimeout==="function"?clearTimeout:function(){};
-G.setInterval=typeof setInterval==="function"?setInterval:function(){};
-G.clearInterval=typeof clearInterval==="function"?clearInterval:function(){};
-G.requestAnimationFrame=function(fn){return G.setTimeout(function(){fn(Date.now());},16);};
-G.cancelAnimationFrame=function(id){G.clearTimeout(id);};
-G.addEventListener=G.addEventListener||function(){};
-G.removeEventListener=G.removeEventListener||function(){};
+
+G.__RAF__=function(fn){
+  return setTimeout(function(){fn(Date.now());},16);
+};
+G.__CAF__=function(id){clearTimeout(id);};
 
 G.__VDOM__={
   elements:elements,
