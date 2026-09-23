@@ -697,18 +697,18 @@ function drawGame(y){
 }
 function parseEndingStats(){
   var html=E.endingStats.rawHTML||E.endingStats.innerHTML||"",out=[],m;
-  var re=/<div class="ending-stat"><span>([\\s\\S]*?)<\\/span><strong>([\\s\\S]*?)<\\/strong><\\/div>/gi;
+  var re=new RegExp('<div class="ending-stat"><span>([\\\\s\\\\S]*?)</span><strong>([\\\\s\\\\S]*?)</strong></div>',"gi");
   while((m=re.exec(html)))out.push({label:plain(m[1]),value:plain(m[2])});
   return out;
 }
 function parseEndingJourney(){
   var html=E.endingJourney.rawHTML||E.endingJourney.innerHTML||"",out=[],m;
-  var re=/<div class="journey-item"><span>([\\s\\S]*?)<\\/span><strong>([\\s\\S]*?)<\\/strong><\\/div>/gi;
+  var re=new RegExp('<div class="journey-item"><span>([\\\\s\\\\S]*?)</span><strong>([\\\\s\\\\S]*?)</strong></div>',"gi");
   while((m=re.exec(html)))out.push({label:plain(m[1]),value:plain(m[2])});
   return out;
 }
 function parseSpanList(html){
-  var out=[],m,re=/<span[^>]*>([\\s\\S]*?)<\\/span>/gi;
+  var out=[],m,re=new RegExp("<span[^>]*>([\\\\s\\\\S]*?)</span>","gi");
   while((m=re.exec(String(html||""))))out.push(plain(m[1]));
   return out;
 }
