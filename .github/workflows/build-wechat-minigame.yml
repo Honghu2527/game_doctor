@@ -51,6 +51,9 @@ jobs:
           "$IMG" assets/bg/career_hospital_ai.webp -resize '1200x1200>' -strip -quality 84 dist/wechat-minigame/assets/bg-mobile/hospital.jpg
           "$IMG" assets/bg/ending_ai.webp -resize '1200x1200>' -strip -quality 84 dist/wechat-minigame/assets/bg-mobile/ending.jpg
 
+          # Convert the UI logo to PNG for reliable real-device CanvasImage decoding.
+          "$IMG" assets/ui/medical-logo.webp -resize '256x256>' -strip dist/wechat-minigame/assets/ui/medical-logo.png
+
           # The Mini Game renderer no longer uses the large stage WebPs.
           rm -f dist/wechat-minigame/assets/bg/*_ai.webp
 
@@ -113,7 +116,9 @@ jobs:
           const canvas={
             width:390,height:844,
             getContext:()=>ctx,
-            createImage:()=>({width:0,height:0,onload:null,onerror:null,set src(v){this._src=v;}})
+            createImage:()=>({width:0,height:0,onload:null,onerror:null,set src(v){this._src=v;}}),
+            requestAnimationFrame:fn=>setTimeout(()=>fn(Date.now()),16),
+            cancelAnimationFrame:id=>clearTimeout(id)
           };
           const offscreen={
             width:390,height:844,
@@ -216,6 +221,7 @@ jobs:
           test -f dist/wechat-minigame/app-board.js
           test -f dist/wechat-minigame/src/renderer.js
           test -f dist/wechat-minigame/assets/ui/medical-logo.webp
+          test -f dist/wechat-minigame/assets/ui/medical-logo.png
           test -f dist/wechat-minigame/assets/bg-mobile/undergrad.jpg
           test -f dist/wechat-minigame/assets/bg-mobile/ending.jpg
           test ! -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
