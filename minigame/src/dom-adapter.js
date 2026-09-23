@@ -337,6 +337,20 @@ G.__RAF__=function(fn){
 };
 G.__CAF__=function(id){clearTimeout(id);};
 
+/* Browser dialogs are only used by non-core convenience UI in the web build. */
+G.__ALERT__=function(message){
+  try{
+    if(wxapi.showModal){
+      wxapi.showModal({title:"提示",content:String(message||""),showCancel:false});
+      return;
+    }
+  }catch(e){}
+};
+G.__CONFIRM__=function(){
+  /* Keep the web event synchronous; delete actions are local-only in this release. */
+  return true;
+};
+
 G.__VDOM__={
   elements:elements,
   nodes:allNodes,
