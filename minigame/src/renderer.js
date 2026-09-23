@@ -40,6 +40,13 @@ var plainCache=Object.create(null);
 var cacheEntryCount=0;
 var fastScrolling=false;
 var scrollRenderPending=false;
+/* Full-resolution scroll cache: scrolling crops a pre-rendered high-DPI strip instead of repainting the whole UI every frame. */
+var scrollBuffer=null;
+var scrollBufferCtx=null;
+var scrollBufferTop=0;
+var scrollBufferHeight=0;
+var scrollBufferValid=false;
+var scrollBufferScreen="";
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function docVisible(y,h,margin){
@@ -1099,23 +1106,31 @@ function prepareContext(targetCtx,targetCanvas,targetDpr){
   if(targetCtx.setTransform)targetCtx.setTransform(targetDpr,0,0,targetDpr,0,0);
   else targetCtx.scale(targetDpr,targetDpr);
 }
-function renderScene(targetCtx,targetCanvas,targetDpr,collectHits){
-  var prevCtx=ctx,prevDpr=DPR;
+function renderScene(targetCtx,targetCanvas,targetDpr,collectHits,opts){
+  opts=opts||{};
+  var prevCtx=ctx,prevDpr=DPR,prevH=H,prevScroll=scrollY,prevMax=maxScroll;
+  var prevContent=contentHeight,prevHits=hits,prevLastScreen=lastScreen,prevGlobalScroll=G.__scrollY;
   ctx=targetCtx;
   DPR=targetDpr;
+  if(opts.logicalH)H=opts.logicalH;
   if(collectHits!==false)hits=[];
   prepareContext(ctx,targetCanvas,DPR);
 
   if(G.__MINI_FATAL_ERROR__){
     drawFatalError(G.__MINI_FATAL_ERROR__);
-    ctx=prevCtx;DPR=prevDpr;
+    ctx=prevCtx;DPR=prevDpr;H=prevH;
     return;
   }
 
   var sid=screenId();
-  if(lastScreen&&lastScreen!==sid&&G.__scrollY===0)scrollY=0;
-  lastScreen=sid;
-  scrollY=clamp(G.__scrollY||scrollY,0,maxScroll);
+  if(opts.forcedScroll!=null){
+    scrollY=opts.forcedScroll;
+    G.__scrollY=scrollY;
+  }else{
+    if(lastScreen&&lastScreen!==sid&&G.__scrollY===0)scrollY=0;
+    lastScreen=sid;
+    scrollY=clamp(G.__scrollY||scrollY,0,maxScroll);
+  }
 
   ctx.save();ctx.translate(0,-scrollY);
   contentHeight=Math.max(H+scrollY,900);
@@ -1132,15 +1147,79 @@ function renderScene(targetCtx,targetCanvas,targetDpr,collectHits){
   maxScroll=Math.max(0,contentHeight-H+24);
   if(scrollY>maxScroll){scrollY=maxScroll;G.__scrollY=scrollY;}
 
-  drawAdmissionOverlay();
-  drawRewardOverlay();
-  drawBlessing();
+  if(!opts.skipOverlays){
+    drawAdmissionOverlay();
+    drawRewardOverlay();
+    drawBlessing();
+  }
 
+  if(opts.preserveMetrics){
+    H=prevH;
+    scrollY=prevScroll;
+    maxScroll=prevMax;
+    contentHeight=prevContent;
+    hits=prevHits;
+    lastScreen=prevLastScreen;
+    G.__scrollY=prevGlobalScroll;
+  }
   ctx=prevCtx;
   DPR=prevDpr;
 }
+function buildScrollBuffer(){
+  if(!wxapi.createOffscreenCanvas||maxScroll<=0)return false;
+  var docBottom=maxScroll+H;
+  var desired=Math.min(docBottom,Math.ceil(H*3));
+  if(desired<=H)return false;
+  var maxTop=Math.max(0,docBottom-desired);
+  var top=clamp(scrollY-(desired-H)/2,0,maxTop);
+  var pw=Math.round(W*STATIC_DPR),ph=Math.round(desired*STATIC_DPR);
+  try{
+    if(!scrollBuffer||scrollBuffer.width!==pw||scrollBuffer.height!==ph){
+      scrollBuffer=wxapi.createOffscreenCanvas({type:"2d",width:pw,height:ph});
+      scrollBuffer.width=pw;
+      scrollBuffer.height=ph;
+      scrollBufferCtx=scrollBuffer.getContext("2d");
+    }
+    if(!scrollBufferCtx)return false;
+    renderScene(scrollBufferCtx,scrollBuffer,STATIC_DPR,false,{
+      logicalH:desired,
+      forcedScroll:top,
+      skipOverlays:true,
+      preserveMetrics:true
+    });
+    scrollBufferTop=top;
+    scrollBufferHeight=desired;
+    scrollBufferScreen=screenId();
+    scrollBufferValid=true;
+    return true;
+  }catch(e){
+    scrollBufferValid=false;
+    return false;
+  }
+}
+function presentScrollBuffer(){
+  if(!scrollBufferValid||scrollBufferScreen!==screenId()||
+     scrollY<scrollBufferTop||scrollY+H>scrollBufferTop+scrollBufferHeight){
+    if(!buildScrollBuffer())return false;
+  }
+  var sy=Math.round((scrollY-scrollBufferTop)*STATIC_DPR);
+  var sh=Math.round(H*STATIC_DPR);
+  if(sy<0||sy+sh>scrollBuffer.height)return false;
+  if(mainCtx.setTransform)mainCtx.setTransform(1,0,0,1,0,0);
+  mainCtx.clearRect(0,0,canvas.width,canvas.height);
+  try{mainCtx.imageSmoothingEnabled=false;}catch(e){}
+  mainCtx.drawImage(
+    scrollBuffer,
+    0,sy,canvas.width,sh,
+    0,0,canvas.width,canvas.height
+  );
+  if(mainCtx.setTransform)mainCtx.setTransform(STATIC_DPR,0,0,STATIC_DPR,0,0);
+  return true;
+}
 function render(){
-  /* 始终在主屏高清 Canvas 上绘制；滑动时仅关闭阴影等昂贵效果，不降低分辨率。 */
+  /* 滑动时只裁切高分辨率缓存，不降低 DPR，也不重算整页文字/卡片。 */
+  if(fastScrolling&&presentScrollBuffer())return;
+  scrollBufferValid=false;
   renderScene(mainCtx,canvas,STATIC_DPR,true);
 }
 function setScroll(v){
@@ -1189,12 +1268,14 @@ function scheduleScrollRender(){
   setTimeout(function(){
     scrollRenderPending=false;
     render();
-  },33);
+  },16);
 }
 
 wxapi.onTouchStart(function(ev){
   var t=ev.touches&&ev.touches[0];if(!t)return;
   touchStart={x:t.clientX,y:t.clientY};touchLastY=t.clientY;touchMoved=false;
+  var modal=!E.admissionOverlay.hidden||!E.supplyOverlay.hidden||!E.crisisOverlay.hidden||!E.endingBlessingOverlay.hidden;
+  if(!modal&&maxScroll>0&&!scrollBufferValid)buildScrollBuffer();
 });
 wxapi.onTouchMove(function(ev){
   var t=ev.touches&&ev.touches[0];if(!t||!touchStart)return;
@@ -1220,6 +1301,7 @@ wxapi.onTouchEnd(function(ev){
   touchStart=null;
   if(fastScrolling){
     fastScrolling=false;
+    scrollBufferValid=false;
     render();
   }
 });
