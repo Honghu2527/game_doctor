@@ -334,8 +334,12 @@ G.scrollTo=function(arg){
   G.__scrollY=Math.max(0,Number(top)||0);
   if(typeof G.__MINI_SCROLL_TO__==="function")G.__MINI_SCROLL_TO__(G.__scrollY);
 };
-G.requestAnimationFrame=function(fn){return setTimeout(function(){fn(Date.now());},16);};
-G.cancelAnimationFrame=function(id){clearTimeout(id);};
+G.setTimeout=typeof setTimeout==="function"?setTimeout:function(){};
+G.clearTimeout=typeof clearTimeout==="function"?clearTimeout:function(){};
+G.setInterval=typeof setInterval==="function"?setInterval:function(){};
+G.clearInterval=typeof clearInterval==="function"?clearInterval:function(){};
+G.requestAnimationFrame=function(fn){return G.setTimeout(function(){fn(Date.now());},16);};
+G.cancelAnimationFrame=function(id){G.clearTimeout(id);};
 G.addEventListener=G.addEventListener||function(){};
 G.removeEventListener=G.removeEventListener||function(){};
 
