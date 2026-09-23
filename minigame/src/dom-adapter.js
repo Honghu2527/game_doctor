@@ -350,6 +350,8 @@ G.__CONFIRM__=function(){
   /* Keep the web event synchronous; delete actions are local-only in this release. */
   return true;
 };
+G.__ADD_EVENT_LISTENER__=function(){};
+G.__REMOVE_EVENT_LISTENER__=function(){};
 
 G.__VDOM__={
   elements:elements,
