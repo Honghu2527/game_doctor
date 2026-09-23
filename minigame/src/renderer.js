@@ -9,7 +9,9 @@ var body=vdom.body;
 var info=wxapi.getWindowInfo?wxapi.getWindowInfo():wxapi.getSystemInfoSync();
 var W=info.windowWidth||375;
 var H=info.windowHeight||667;
-var DPR=info.pixelRatio||1;
+var DEVICE_DPR=info.pixelRatio||1;
+/* 真机 DPR=3 时手工 Canvas 每帧像素量过大。2x 已足够清晰，像素量可下降一半以上。 */
+var DPR=Math.min(2,Math.max(1,DEVICE_DPR));
 var SAFE_TOP=(info.safeArea&&info.safeArea.top)||0;
 var canvas=G.__SCREEN_CANVAS__||wxapi.createCanvas();
 /* 先设物理尺寸，再取 context；避免部分小游戏运行时重置 Canvas 状态。 */
@@ -32,6 +34,8 @@ var activeInput=null;
 var animTimer=null;
 var imageCache={};
 var lastScreen="";
+var fastScrolling=false;
+var scrollRenderPending=false;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 
@@ -61,14 +65,28 @@ function img(path){
   if(imageCache[path])return imageCache[path];
   var im;
   try{im=canvas.createImage?canvas.createImage():wxapi.createImage();}catch(e){return null;}
+  im.__ready=false;
+  im.__failed=false;
   imageCache[path]=im;
-  im.onload=function(){render();};
-  im.onerror=function(){};
+  im.onload=function(){
+    im.__ready=true;
+    im.__failed=false;
+    render();
+  };
+  im.onerror=function(err){
+    im.__failed=true;
+    try{console.warn("[medical-life] image failed",path,err||"");}catch(e){}
+    /* 部分真机对相对路径解析更严格，自动再尝试 ./ 前缀。 */
+    if(path.indexOf("./")!==0&&!im.__retried){
+      im.__retried=true;
+      try{im.src="./"+path;return;}catch(e){}
+    }
+  };
   im.src=path;
   return im;
 }
+/* 只预载 Logo；背景按当前人生阶段懒加载，避免真机一次解码全部大图。 */
 var logo=img("assets/ui/medical-logo.webp");
-Object.keys(stageAssets).forEach(function(k){img(stageAssets[k]);});
 
 function rr(x,y,w,h,r,fill,stroke,lineW){
   if(w<=0||h<=0)return;
@@ -84,6 +102,7 @@ function rr(x,y,w,h,r,fill,stroke,lineW){
   if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lineW||1;ctx.stroke();}
 }
 function withShadow(color,blur,oy,fn){
+  if(fastScrolling){fn();return;}
   ctx.save();
   ctx.shadowColor=color||"rgba(20,35,38,.12)";
   ctx.shadowBlur=blur||20;ctx.shadowOffsetY=oy||8;
@@ -247,15 +266,31 @@ function sectionLabel(label,x,y){text(label,x,y,shellW-36,18,{font:"800 13px san
 
 function stageKey(){return body.getAttribute("data-stage-bg")||"undergrad";}
 function drawBackdrop(){
-  ctx.fillStyle="#f3eee5";ctx.fillRect(0,0,W,Math.max(H,contentHeight));
+  /* 只需要覆盖当前视口，Canvas 本身会裁剪；避免真机在长页面上做超大 fill。 */
+  ctx.fillStyle="#f3eee5";ctx.fillRect(0,scrollY,W,H);
   var heroH=560+SAFE_TOP;
   ctx.fillStyle="#183033";ctx.fillRect(0,0,W,heroH);
   var key=stageKey();
   var path=stageAssets[key]||stageAssets.undergrad;
-  var im=imageCache[path];
-  if(im&&im.width&&im.height){
-    var dh=W*im.height/im.width;
-    try{ctx.drawImage(im,0,0,W,dh);}catch(e){}
+  var im=img(path);
+  if(im&&im.__ready){
+    try{
+      var iw=Number(im.width||im.naturalWidth||0);
+      var ih=Number(im.height||im.naturalHeight||0);
+      if(iw>0&&ih>0){
+        /* CSS background-size: cover + mobile background-position≈58% center */
+        var scale=Math.max(W/iw,heroH/ih);
+        var sw=W/scale,sh=heroH/scale;
+        var sx=Math.max(0,(iw-sw)*0.58);
+        var sy=Math.max(0,(ih-sh)*0.50);
+        ctx.drawImage(im,sx,sy,sw,sh,0,0,W,heroH);
+      }else{
+        /* 真机 CanvasImage 可能不暴露 width/height；四参数 drawImage 仍可正常绘制。 */
+        ctx.drawImage(im,0,0,W,heroH);
+      }
+    }catch(e){
+      try{ctx.drawImage(im,0,0,W,heroH);}catch(_){}
+    }
   }
   var hg=ctx.createLinearGradient(0,0,W,0);
   hg.addColorStop(0,"rgba(14,27,30,.57)");hg.addColorStop(1,"rgba(14,27,30,.15)");
@@ -282,7 +317,7 @@ function journeySteps(){
 }
 function drawTopbar(){
   var y=SAFE_TOP+18;
-  if(logo&&logo.width){
+  if(logo&&logo.__ready){
     try{ctx.drawImage(logo,shellX,y,54,54);}catch(e){}
   }else{rr(shellX,y,54,54,17,"#214f4b");text("⚕",shellX+27,y+10,40,34,{font:"28px serif",color:"#fff8ea",align:"center"});}
   var tx=shellX+64,tw=shellW-64;
@@ -1042,6 +1077,15 @@ function hitAt(x,y){
   }
   return null;
 }
+function scheduleScrollRender(){
+  if(scrollRenderPending)return;
+  scrollRenderPending=true;
+  setTimeout(function(){
+    scrollRenderPending=false;
+    render();
+  },33);
+}
+
 wxapi.onTouchStart(function(ev){
   var t=ev.touches&&ev.touches[0];if(!t)return;
   touchStart={x:t.clientX,y:t.clientY};touchLastY=t.clientY;touchMoved=false;
@@ -1052,7 +1096,10 @@ wxapi.onTouchMove(function(ev){
   if(Math.abs(t.clientY-touchStart.y)>5)touchMoved=true;
   var modal=!E.admissionOverlay.hidden||!E.supplyOverlay.hidden||!E.crisisOverlay.hidden||!E.endingBlessingOverlay.hidden;
   if(!modal&&maxScroll>0){
-    scrollY=clamp(scrollY-dy,0,maxScroll);G.__scrollY=scrollY;render();
+    fastScrolling=true;
+    scrollY=clamp(scrollY-dy,0,maxScroll);
+    G.__scrollY=scrollY;
+    scheduleScrollRender();
   }
 });
 wxapi.onTouchEnd(function(ev){
@@ -1065,6 +1112,10 @@ wxapi.onTouchEnd(function(ev){
     }
   }
   touchStart=null;
+  if(fastScrolling){
+    fastScrolling=false;
+    render();
+  }
 });
 
 module.exports={render:render,canvas:canvas};
