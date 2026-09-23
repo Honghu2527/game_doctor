@@ -47,6 +47,12 @@ var scrollBufferTop=0;
 var scrollBufferHeight=0;
 var scrollBufferValid=false;
 var scrollBufferScreen="";
+var scrollTargetY=0;
+var scrollVelocity=0;
+var scrollFrameId=0;
+var scrollFrameRunning=false;
+var lastTouchTime=0;
+var bufferWarmTimer=null;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function docVisible(y,h,margin){
@@ -102,7 +108,7 @@ function img(path){
   return im;
 }
 /* 只预载 Logo；背景按当前人生阶段懒加载，避免真机一次解码全部大图。 */
-var logo=img("assets/ui/medical-logo.webp");
+var logo=img("assets/ui/medical-logo.png");
 
 function rr(x,y,w,h,r,fill,stroke,lineW){
   if(w<=0||h<=0)return;
@@ -1200,7 +1206,7 @@ function buildScrollBuffer(){
 function presentScrollBuffer(){
   if(!scrollBufferValid||scrollBufferScreen!==screenId()||
      scrollY<scrollBufferTop||scrollY+H>scrollBufferTop+scrollBufferHeight){
-    if(!buildScrollBuffer())return false;
+    return false;
   }
   var sy=Math.round((scrollY-scrollBufferTop)*STATIC_DPR);
   var sh=Math.round(H*STATIC_DPR);
@@ -1221,9 +1227,11 @@ function render(){
   if(fastScrolling&&presentScrollBuffer())return;
   scrollBufferValid=false;
   renderScene(mainCtx,canvas,STATIC_DPR,true);
+  if(!fastScrolling)scheduleScrollBufferWarm();
 }
 function setScroll(v){
   scrollY=clamp(Number(v)||0,0,maxScroll||999999);
+  scrollTargetY=scrollY;
   G.__scrollY=scrollY;render();
 }
 G.__MINI_RENDER__=render;
@@ -1262,47 +1270,117 @@ function hitAt(x,y){
   }
   return null;
 }
-function scheduleScrollRender(){
-  if(scrollRenderPending)return;
-  scrollRenderPending=true;
-  setTimeout(function(){
-    scrollRenderPending=false;
-    render();
-  },16);
+function requestDisplayFrame(fn){
+  if(canvas&&typeof canvas.requestAnimationFrame==="function")return canvas.requestAnimationFrame(fn);
+  if(typeof G.__RAF__==="function")return G.__RAF__(fn);
+  return setTimeout(function(){fn(Date.now());},16);
+}
+function cancelDisplayFrame(id){
+  if(!id)return;
+  if(canvas&&typeof canvas.cancelAnimationFrame==="function"){
+    try{canvas.cancelAnimationFrame(id);return;}catch(e){}
+  }
+  if(typeof G.__CAF__==="function"){G.__CAF__(id);return;}
+  clearTimeout(id);
+}
+function scheduleScrollBufferWarm(){
+  if(bufferWarmTimer){clearTimeout(bufferWarmTimer);bufferWarmTimer=null;}
+  if(fastScrolling||maxScroll<=0)return;
+  var modal=!E.admissionOverlay.hidden||!E.supplyOverlay.hidden||!E.crisisOverlay.hidden||!E.endingBlessingOverlay.hidden;
+  if(modal)return;
+  bufferWarmTimer=setTimeout(function(){
+    bufferWarmTimer=null;
+    if(!fastScrolling&&maxScroll>0)buildScrollBuffer();
+  },70);
+}
+function finishSmoothScroll(){
+  scrollFrameRunning=false;
+  scrollFrameId=0;
+  fastScrolling=false;
+  scrollVelocity=0;
+  scrollY=clamp(scrollTargetY,0,maxScroll);
+  G.__scrollY=scrollY;
+  scrollBufferValid=false;
+  render();
+}
+function smoothScrollFrame(){
+  scrollFrameId=0;
+  if(!scrollFrameRunning)return;
+
+  scrollTargetY=clamp(scrollTargetY,0,maxScroll);
+  var diff=scrollTargetY-scrollY;
+  var touching=!!touchStart;
+  var ease=touching?0.52:0.20;
+
+  if(Math.abs(diff)>0.08)scrollY+=diff*ease;
+  else scrollY=scrollTargetY;
+
+  scrollY=clamp(scrollY,0,maxScroll);
+  G.__scrollY=scrollY;
+  fastScrolling=true;
+  render();
+
+  if(touching||Math.abs(scrollTargetY-scrollY)>0.35){
+    scrollFrameId=requestDisplayFrame(smoothScrollFrame);
+  }else{
+    finishSmoothScroll();
+  }
+}
+function ensureSmoothScroll(){
+  if(scrollFrameRunning)return;
+  scrollFrameRunning=true;
+  scrollFrameId=requestDisplayFrame(smoothScrollFrame);
 }
 
 wxapi.onTouchStart(function(ev){
   var t=ev.touches&&ev.touches[0];if(!t)return;
-  touchStart={x:t.clientX,y:t.clientY};touchLastY=t.clientY;touchMoved=false;
-  var modal=!E.admissionOverlay.hidden||!E.supplyOverlay.hidden||!E.crisisOverlay.hidden||!E.endingBlessingOverlay.hidden;
-  if(!modal&&maxScroll>0&&!scrollBufferValid)buildScrollBuffer();
+  touchStart={x:t.clientX,y:t.clientY};
+  touchLastY=t.clientY;
+  touchMoved=false;
+  lastTouchTime=Date.now();
+  scrollTargetY=scrollY;
+  scrollVelocity=0;
 });
 wxapi.onTouchMove(function(ev){
   var t=ev.touches&&ev.touches[0];if(!t||!touchStart)return;
-  var dy=t.clientY-touchLastY;touchLastY=t.clientY;
+  var now=Date.now();
+  var dy=t.clientY-touchLastY;
+  var dt=Math.max(8,Math.min(50,now-lastTouchTime||16));
+  touchLastY=t.clientY;
+  lastTouchTime=now;
   if(Math.abs(t.clientY-touchStart.y)>5)touchMoved=true;
+
   var modal=!E.admissionOverlay.hidden||!E.supplyOverlay.hidden||!E.crisisOverlay.hidden||!E.endingBlessingOverlay.hidden;
   if(!modal&&maxScroll>0){
+    var delta=-dy;
+    scrollTargetY=clamp(scrollTargetY+delta,0,maxScroll);
+    var instantaneous=delta/dt;
+    scrollVelocity=scrollVelocity*.68+instantaneous*.32;
     fastScrolling=true;
-    scrollY=clamp(scrollY-dy,0,maxScroll);
-    G.__scrollY=scrollY;
-    scheduleScrollRender();
+    ensureSmoothScroll();
   }
 });
 wxapi.onTouchEnd(function(ev){
   if(!touchStart)return;
   var t=ev.changedTouches&&ev.changedTouches[0],x=t?t.clientX:touchStart.x,y=t?t.clientY:touchStart.y;
-  if(!touchMoved){
+  var wasMoved=touchMoved;
+  if(!wasMoved){
     var h=hitAt(x,y);
     if(h){
       try{if(h.action)h.action();else if(h.node)h.node.click();}catch(e){if(console&&console.error)console.error(e);}
     }
   }
   touchStart=null;
-  if(fastScrolling){
-    fastScrolling=false;
-    scrollBufferValid=false;
-    render();
+
+  if(wasMoved&&maxScroll>0){
+    /* 浏览器式惯性：速度来自最后几次 touchmove，但最终位置仍限制在页面范围内。 */
+    var projected=scrollVelocity*170;
+    projected=clamp(projected,-H*.72,H*.72);
+    scrollTargetY=clamp(scrollTargetY+projected,0,maxScroll);
+    fastScrolling=true;
+    ensureSmoothScroll();
+  }else if(fastScrolling){
+    finishSmoothScroll();
   }
 });
 
