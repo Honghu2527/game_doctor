@@ -59,7 +59,7 @@ jobs:
           const noop=()=>{};
           function grad(){return {addColorStop:noop};}
           const ctx=new Proxy({
-            scale:noop,clearRect:noop,fillRect:noop,beginPath:noop,moveTo:noop,arcTo:noop,
+            scale:noop,clearRect:noop,fillRect:noop,beginPath:noop,moveTo:noop,lineTo:noop,arcTo:noop,
             closePath:noop,fill:noop,stroke:noop,drawImage:noop,save:noop,restore:noop,
             translate:noop,rotate:noop,arc:noop,rect:noop,clip:noop,
             createLinearGradient:grad,createRadialGradient:grad,
