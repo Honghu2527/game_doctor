@@ -134,6 +134,10 @@ jobs:
             if(visible()!=="letterScreen")throw new Error("failed to enter admission letter");
             E.enterUniversityBtn.click();
             if(visible()!=="gameScreen")throw new Error("failed to enter university");
+            if(E.openSupplyBtn.hidden!==true)throw new Error("ad supply entry must stay hidden without adUnitId");
+            if((E.inventoryLockNote.textContent||"").includes("广告"))throw new Error("ad copy leaked into no-ad inventory UI");
+            const inv=E.inventoryItems.rawHTML||E.inventoryItems.innerHTML||"";
+            if(!inv.includes("体力恢复卡")||!inv.includes("心理恢复卡")||!inv.includes("决策提示卡"))throw new Error("starter items missing");
             const choice=E.choices.children[0];
             if(!choice)throw new Error("story choices not rendered");
             choice.click();
