@@ -10,15 +10,41 @@ var info=wxapi.getWindowInfo?wxapi.getWindowInfo():wxapi.getSystemInfoSync();
 var W=info.windowWidth||375;
 var H=info.windowHeight||667;
 var DEVICE_DPR=info.pixelRatio||1;
-/* 真机 DPR=3 时手工 Canvas 每帧像素量过大。2x 已足够清晰，像素量可下降一半以上。 */
-var DPR=Math.min(1.5,Math.max(1,DEVICE_DPR));
+/* 静止画面使用接近设备原生分辨率，保证 iPhone 文字和卡片清晰。 */
+var STATIC_DPR=Math.min(3,Math.max(1,DEVICE_DPR));
+/* 滑动时只在低分辨率离屏 Canvas 上绘制，松手后立即恢复高清。 */
+var SCROLL_DPR=1.25;
+var DPR=STATIC_DPR;
 var SAFE_TOP=(info.safeArea&&info.safeArea.top)||0;
 var canvas=G.__SCREEN_CANVAS__||wxapi.createCanvas();
-/* 先设物理尺寸，再取 context；避免部分小游戏运行时重置 Canvas 状态。 */
-canvas.width=Math.round(W*DPR);
-canvas.height=Math.round(H*DPR);
-var ctx=canvas.getContext("2d");
-ctx.scale(DPR,DPR);
+canvas.width=Math.round(W*STATIC_DPR);
+canvas.height=Math.round(H*STATIC_DPR);
+var mainCtx=canvas.getContext("2d");
+var ctx=mainCtx;
+
+var scrollCanvas=null;
+var scrollCtx=null;
+try{
+  if(wxapi.createOffscreenCanvas){
+    scrollCanvas=wxapi.createOffscreenCanvas({
+      type:"2d",
+      width:Math.round(W*SCROLL_DPR),
+      height:Math.round(H*SCROLL_DPR)
+    });
+  }else{
+    scrollCanvas=wxapi.createCanvas();
+    scrollCanvas.width=Math.round(W*SCROLL_DPR);
+    scrollCanvas.height=Math.round(H*SCROLL_DPR);
+  }
+  if(scrollCanvas){
+    scrollCanvas.width=Math.round(W*SCROLL_DPR);
+    scrollCanvas.height=Math.round(H*SCROLL_DPR);
+    scrollCtx=scrollCanvas.getContext("2d");
+  }
+}catch(e){
+  scrollCanvas=null;
+  scrollCtx=null;
+}
 G.canvas=canvas;
 
 var C={
@@ -356,10 +382,6 @@ function drawBackdrop(){
   vg.addColorStop(0,"rgba(14,27,30,.02)");vg.addColorStop(.52,"rgba(14,27,30,.08)");
   vg.addColorStop(.74,"#183033");vg.addColorStop(1,"#eee8dd");
   ctx.fillStyle=vg;ctx.fillRect(0,0,W,heroH);
-  ctx.save();ctx.globalAlpha=.045;ctx.strokeStyle="#fff";ctx.lineWidth=.5;
-  for(var gx=0;gx<W;gx+=32){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,330);ctx.stroke();}
-  for(var gy=0;gy<330;gy+=32){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
-  ctx.restore();
 }
 function screenId(){
   var order=["startScreen","gaokaoScreen","schoolScreen","letterScreen","gameScreen","endingScreen"];
@@ -1087,17 +1109,30 @@ function drawFatalError(err){
   text(msg,36,SAFE_TOP+130,W-72,18,{font:"10px monospace",color:"#303638",maxLines:8});
   ctx.restore();
 }
-function render(){
-  hits=[];
+function prepareContext(targetCtx,targetCanvas,targetDpr){
+  if(targetCtx.setTransform)targetCtx.setTransform(1,0,0,1,0,0);
+  targetCtx.clearRect(0,0,targetCanvas.width,targetCanvas.height);
+  if(targetCtx.setTransform)targetCtx.setTransform(targetDpr,0,0,targetDpr,0,0);
+  else targetCtx.scale(targetDpr,targetDpr);
+}
+function renderScene(targetCtx,targetCanvas,targetDpr,collectHits){
+  var prevCtx=ctx,prevDpr=DPR;
+  ctx=targetCtx;
+  DPR=targetDpr;
+  if(collectHits!==false)hits=[];
+  prepareContext(ctx,targetCanvas,DPR);
+
   if(G.__MINI_FATAL_ERROR__){
     drawFatalError(G.__MINI_FATAL_ERROR__);
+    ctx=prevCtx;DPR=prevDpr;
     return;
   }
+
   var sid=screenId();
   if(lastScreen&&lastScreen!==sid&&G.__scrollY===0)scrollY=0;
   lastScreen=sid;
   scrollY=clamp(G.__scrollY||scrollY,0,maxScroll);
-  ctx.clearRect(0,0,W,H);
+
   ctx.save();ctx.translate(0,-scrollY);
   contentHeight=Math.max(H+scrollY,900);
   drawBackdrop();
@@ -1109,11 +1144,35 @@ function render(){
   else if(sid==="gameScreen")contentHeight=drawGame(y)+40;
   else if(sid==="endingScreen")contentHeight=drawEnding(y)+40;
   ctx.restore();
+
   maxScroll=Math.max(0,contentHeight-H+24);
   if(scrollY>maxScroll){scrollY=maxScroll;G.__scrollY=scrollY;}
+
   drawAdmissionOverlay();
   drawRewardOverlay();
   drawBlessing();
+
+  ctx=prevCtx;
+  DPR=prevDpr;
+}
+function blitScrollCanvas(){
+  if(!scrollCanvas||!scrollCtx)return false;
+  renderScene(scrollCtx,scrollCanvas,SCROLL_DPR,false);
+  if(mainCtx.setTransform)mainCtx.setTransform(1,0,0,1,0,0);
+  mainCtx.clearRect(0,0,canvas.width,canvas.height);
+  try{
+    mainCtx.imageSmoothingEnabled=true;
+    if("imageSmoothingQuality" in mainCtx)mainCtx.imageSmoothingQuality="medium";
+  }catch(e){}
+  mainCtx.drawImage(scrollCanvas,0,0,scrollCanvas.width,scrollCanvas.height,0,0,canvas.width,canvas.height);
+  if(mainCtx.setTransform)mainCtx.setTransform(STATIC_DPR,0,0,STATIC_DPR,0,0);
+  return true;
+}
+function render(){
+  if(fastScrolling&&scrollCtx&&scrollCanvas){
+    if(blitScrollCanvas())return;
+  }
+  renderScene(mainCtx,canvas,STATIC_DPR,true);
 }
 function setScroll(v){
   scrollY=clamp(Number(v)||0,0,maxScroll||999999);
@@ -1161,7 +1220,7 @@ function scheduleScrollRender(){
   setTimeout(function(){
     scrollRenderPending=false;
     render();
-  },40);
+  },16);
 }
 
 wxapi.onTouchStart(function(ev){
