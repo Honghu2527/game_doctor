@@ -19,19 +19,22 @@ jobs:
           rm -rf dist/wechat-minigame
           mkdir -p dist/wechat-minigame
 
-          # Native Mini Game shell / renderer.
           cp -R minigame/. dist/wechat-minigame/
           rm -f dist/wechat-minigame/src/main.js
 
-          # Reuse the exact approved web gameplay/data instead of a rewritten engine.
           cp app.js dist/wechat-minigame/app-core.js
           cp board_adapter.js dist/wechat-minigame/app-board.js
           cp -R data dist/wechat-minigame/data
           cp -R assets dist/wechat-minigame/assets
 
-          # Data modules were authored for the browser global. Bind them to
-          # the WeChat Mini Game global object without changing their content.
-          find dist/wechat-minigame/data -type f -name '*.js' -print0 |             xargs -0 sed -i 's/window\./GameGlobal./g'
+          find dist/wechat-minigame/data -type f -name '*.js' -print0 | \
+            xargs -0 sed -i 's/window\./GameGlobal./g'
+
+          sed -i \
+            -e 's/window\./GameGlobal./g' \
+            -e 's/document\./GameGlobal.document./g' \
+            -e 's/localStorage\./GameGlobal.localStorage./g' \
+            dist/wechat-minigame/app-core.js dist/wechat-minigame/app-board.js
 
       - name: Syntax check
         shell: bash
