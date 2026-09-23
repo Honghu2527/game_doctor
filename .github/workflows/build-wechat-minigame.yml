@@ -90,8 +90,37 @@ jobs:
           require(path.resolve(entry));
           if(!global.GameGlobal.__VDOM__)throw new Error("virtual DOM not initialized");
           if(typeof global.GameGlobal.__MINI_RENDER__!=="function")throw new Error("renderer not initialized");
-          console.log("Mini Game runtime smoke test passed.");
-          setTimeout(()=>process.exit(0),30);
+          const E=global.GameGlobal.__VDOM__.elements;
+          function visible(){
+            for(const id of ["startScreen","gaokaoScreen","schoolScreen","letterScreen","gameScreen","endingScreen"]){
+              if(E[id]&&!E[id].hidden)return id;
+            }
+            return "none";
+          }
+          if(visible()!=="startScreen")throw new Error("start screen not visible");
+          if(!E.difficultyGrid.children.length)throw new Error("difficulty cards not rendered");
+          E.startBtn.click();
+          if(visible()!=="gaokaoScreen")throw new Error("failed to enter gaokao screen");
+          E.rollBtn.click();
+          setTimeout(()=>{
+            E.stopBtn.click();
+            if(!(Number(E.scoreDisplay.textContent)>=280))throw new Error("gaokao score not generated");
+            if(!(E.goSchoolBtn.listeners.click||[]).length)throw new Error("school navigation not wired");
+            E.goSchoolBtn.click();
+            if(visible()!=="schoolScreen")throw new Error("failed to enter school screen");
+            const school=E.schoolGrid.children[0];
+            if(!school)throw new Error("no eligible school card rendered");
+            school.click();
+            if(visible()!=="letterScreen")throw new Error("failed to enter admission letter");
+            E.enterUniversityBtn.click();
+            if(visible()!=="gameScreen")throw new Error("failed to enter university");
+            const choice=E.choices.children[0];
+            if(!choice)throw new Error("story choices not rendered");
+            choice.click();
+            if(visible()!=="gameScreen"&&visible()!=="endingScreen")throw new Error("story choice navigation failed");
+            console.log("Mini Game runtime + interaction smoke test passed.");
+            setTimeout(()=>process.exit(0),40);
+          },120);
           SMOKE
           node /tmp/minigame-smoke.js dist/wechat-minigame/game.js
 
