@@ -35,6 +35,12 @@ jobs:
             -e 's/window\.cancelAnimationFrame/GameGlobal.__CAF__/g' \
             -e 's/window\.scrollTo/GameGlobal.__SCROLL_TO__/g' \
             -e 's/window\.scrollY/GameGlobal.__scrollY/g' \
+            -e 's/window\.setTimeout/setTimeout/g' \
+            -e 's/window\.clearTimeout/clearTimeout/g' \
+            -e 's/window\.setInterval/setInterval/g' \
+            -e 's/window\.clearInterval/clearInterval/g' \
+            -e 's/window\.addEventListener/GameGlobal.__ADD_EVENT_LISTENER__/g' \
+            -e 's/window\.removeEventListener/GameGlobal.__REMOVE_EVENT_LISTENER__/g' \
             -e 's/window\.alert/GameGlobal.__ALERT__/g' \
             -e 's/window\.confirm/GameGlobal.__CONFIRM__/g' \
             -e 's/window\./GameGlobal./g' \
