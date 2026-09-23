@@ -994,7 +994,7 @@ function fixedButton(node,x,y,w,label,primary){
 function drawAdmissionOverlay(){
   if(E.admissionOverlay.hidden)return false;
   drawOverlayBase();
-  var x=20,w=W-40,h=Math.min(470,H-70),y=(H-h)/2;
+  var x=20,w=W-40,h=Math.min(520,H-50),y=(H-h)/2;
   withShadow("rgba(0,0,0,.30)",40,12,function(){rr(x,y,w,h,25,"#fffdf8","rgba(255,255,255,.24)");});
   if(!E.admissionSearching.hidden){
     var cx=W/2,cy=y+68,r=32,ang=(Date.now()/220)%6.28;
@@ -1014,7 +1014,17 @@ function drawAdmissionOverlay(){
     text("OFFICIAL RESULT · GAME",W/2,y+142,w-60,13,{font:"800 8px sans-serif",color:C.accent,align:"center"});
     text(E.admissionResultTitle.textContent||"",W/2,y+163,w-60,29,{font:"800 24px sans-serif",color:"#1c3034",align:"center"});
     text(E.admissionResultText.textContent||"",W/2,y+202,w-64,18,{font:"11px sans-serif",color:"#6c797a",align:"center",maxLines:3});
-    text(plain(E.admissionResultMeta.innerHTML),W/2,y+260,w-64,16,{font:"9px sans-serif",color:"#536466",align:"center",maxLines:4});
+
+    var rewardText=E.admissionRewardText&&E.admissionRewardText.textContent||"";
+    if(rewardText){
+      var rewardY=y+244,rewardH=78;
+      rr(x+32,rewardY,w-64,rewardH,15,"#edf6f1","#bdd8cd");
+      text("GRADUATION TRIP · 升学奖励",x+46,rewardY+11,w-92,12,{font:"800 8px sans-serif",color:"#3c7568"});
+      text(rewardText,x+46,rewardY+30,w-92,16,{font:"10px sans-serif",color:"#315b53",maxLines:3});
+      text(plain(E.admissionResultMeta.innerHTML),W/2,y+336,w-64,15,{font:"8px sans-serif",color:"#536466",align:"center",maxLines:3});
+    }else{
+      text(plain(E.admissionResultMeta.innerHTML),W/2,y+260,w-64,16,{font:"9px sans-serif",color:"#536466",align:"center",maxLines:4});
+    }
     fixedButton(E.admissionResultBtn,x+36,y+h-70,w-72,E.admissionResultBtn.textContent||"确认结果",true);
   }
   return true;
