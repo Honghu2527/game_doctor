@@ -27,6 +27,33 @@ jobs:
           cp -R data dist/wechat-minigame/data
           cp -R assets dist/wechat-minigame/assets
 
+          # Build mobile-friendly JPEG stage backgrounds for real devices.
+          mkdir -p dist/wechat-minigame/assets/bg-mobile
+          if command -v magick >/dev/null 2>&1; then
+            IMG="magick"
+          elif command -v convert >/dev/null 2>&1; then
+            IMG="convert"
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y imagemagick
+            IMG="convert"
+          fi
+
+          "$IMG" assets/bg/undergrad_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/undergrad.jpg
+          "$IMG" assets/bg/internal_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/internal.jpg
+          "$IMG" assets/bg/surgery_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/surgery.jpg
+          "$IMG" assets/bg/pediatrics_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/pediatrics.jpg
+          "$IMG" assets/bg/radiology_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/radiology.jpg
+          "$IMG" assets/bg/nuclear_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/nuclear.jpg
+          "$IMG" assets/bg/pathology_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/pathology.jpg
+          "$IMG" assets/bg/research_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/research.jpg
+          "$IMG" assets/bg/overseas_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/overseas.jpg
+          "$IMG" assets/bg/career_hospital_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/hospital.jpg
+          "$IMG" assets/bg/ending_ai.webp -resize '900x900>' -strip -quality 76 dist/wechat-minigame/assets/bg-mobile/ending.jpg
+
+          # The Mini Game renderer no longer uses the large stage WebPs.
+          rm -f dist/wechat-minigame/assets/bg/*_ai.webp
+
           python3 minigame/build/patch-core.py dist/wechat-minigame/app-core.js
 
           find dist/wechat-minigame/data -type f -name '*.js' -print0 | \
@@ -177,7 +204,9 @@ jobs:
           test -f dist/wechat-minigame/app-board.js
           test -f dist/wechat-minigame/src/renderer.js
           test -f dist/wechat-minigame/assets/ui/medical-logo.webp
-          test -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
+          test -f dist/wechat-minigame/assets/bg-mobile/undergrad.jpg
+          test -f dist/wechat-minigame/assets/bg-mobile/ending.jpg
+          test ! -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
           test ! -f dist/wechat-minigame/src/main.js
           grep -q '"compileType": "game"' dist/wechat-minigame/project.config.json
           grep -q '"appid": "wx593dd9974d74c564"' dist/wechat-minigame/project.config.json
