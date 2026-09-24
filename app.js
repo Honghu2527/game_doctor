@@ -2673,6 +2673,15 @@
     renderJourney();
     if(BOARD&&el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
     renderWall();
+    if(BOARD&&BOARD.refresh){
+      BOARD.refresh().then(function(){
+        if(el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
+        renderWall();
+      }).catch(function(){
+        if(el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
+        render();
+      });
+    }
     saveState();scrollAfterRender();
     window.setTimeout(function(){showEndingBlessing(type,ending);},380);
   }
