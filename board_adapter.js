@@ -186,45 +186,20 @@
         ending:String(payload.ending||"医学人生").slice(0,40),
         message:String(payload.message||"").trim().slice(0,200)
       };
-      /* 第一步快速写入 pending，避免内容安全检查占住客户端调用窗口。 */
+
+      /* 只做快速写入。内容安全审核由云端定时触发器异步完成，
+         避免手机端等待 msgSecCheck 导致 -404005 exceed max poll。 */
       return callCloud("createPending",body).then(function(created){
         var id=created&&created.id;
-        if(!id)throw new Error("留言创建失败，请稍后再试。");
+        if(!id)throw new Error("留言提交失败，请稍后再试。");
 
-        /* 第二步审核。即使客户端等待审核响应超时，也继续通过 list 轮询最终公开状态。 */
-        return callCloud("moderateMessage",{messageId:id}).then(function(result){
-          if(result&&result.approved===false){
-            throw new Error(result.message||"这条留言未通过内容安全检查，请修改后再试。");
-          }
-          return sync().then(function(){return result;});
-        }).catch(function(err){
-          var raw=String(err&&err.message||err||"");
-          if(/-404005|exceed max poll|timeout|timed out/i.test(raw)){
-            return new Promise(function(resolve,reject){
-              var tries=0;
-              function check(){
-                tries++;
-                sync().then(function(list){
-                  var found=(list||[]).some(function(m){return m.id===id;});
-                  if(found){resolve({ok:true,approved:true,id:id});return;}
-                  if(tries>=5){
-                    reject(new Error("留言已提交审核，请稍后刷新全体留言墙查看结果。"));
-                    return;
-                  }
-                  setTimeout(check,tries<3?1800:3200);
-                }).catch(function(){
-                  if(tries>=5){
-                    reject(new Error("留言已提交审核，请稍后刷新全体留言墙查看结果。"));
-                    return;
-                  }
-                  setTimeout(check,2200);
-                });
-              }
-              setTimeout(check,1600);
-            });
-          }
-          throw err;
-        });
+        /* 审核通常在下一次云端定时任务完成。轻量刷新几次即可，
+           不需要高频轮询。 */
+        setTimeout(function(){sync().catch(function(){});},5000);
+        setTimeout(function(){sync().catch(function(){});},30000);
+        setTimeout(function(){sync().catch(function(){});},65000);
+
+        return {ok:true,pending:true,id:id};
       });
     },
 
