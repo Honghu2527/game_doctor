@@ -67,12 +67,13 @@ async function contentPass(text, openid) {
 async function listMessages(openid, limit) {
   const n = Math.max(1, Math.min(MAX_LIST, Number(limit) || 60));
   const res = await db.collection(COLLECTION)
-    .where({ status: "approved", hidden: false })
     .orderBy("createdAt", "desc")
     .limit(n)
     .get();
 
-  return (res.data || []).map(m => publicMessage(m, openid));
+  return (res.data || [])
+    .filter(m => m && m.status === "approved" && m.hidden !== true)
+    .map(m => publicMessage(m, openid));
 }
 
 async function createMessage(openid, event) {
@@ -85,11 +86,10 @@ async function createMessage(openid, event) {
 
   const recent = await db.collection(COLLECTION)
     .where({ ownerOpenId: openid })
-    .orderBy("createdAt", "desc")
-    .limit(1)
+    .limit(10)
     .get();
 
-  const last = recent.data && recent.data[0];
+  const last = (recent.data || []).sort((a,b) => Number(b.createdAt||0)-Number(a.createdAt||0))[0];
   if (last && Date.now() - Number(last.createdAt || 0) < POST_COOLDOWN_MS) {
     return { ok: false, reason: "too_fast", message: "留言太快啦，请稍等十几秒再发布。" };
   }
