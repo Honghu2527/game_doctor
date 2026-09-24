@@ -164,7 +164,7 @@
       }
       return "全体留言 · 云服务未连接";
     },
-    isOnline:function(){return !!cloudReady&&!cloudError;},
+    isOnline:function(){return !!cloudReady;},
     lastError:function(){return cloudError;},
     refresh:function(){return sync();},
     list:function(sort){return sortList(cache,sort);},
