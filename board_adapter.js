@@ -94,10 +94,12 @@
     if(!cloudReady||typeof wx==="undefined"||!wx.cloud||!wx.cloud.callFunction){
       return Promise.reject(new Error("online_board_unavailable"));
     }
-    return wx.cloud.callFunction({
+    var options={
       name:"messageBoard",
       data:Object.assign({action:action},data||{})
-    }).then(function(res){
+    };
+    if(config.cloudEnvId)options.config={env:config.cloudEnvId};
+    return wx.cloud.callFunction(options).then(function(res){
       var body=res&&res.result||{};
       if(body&&body.ok===false){
         var err=new Error(body.message||body.reason||"留言服务暂不可用");
@@ -134,8 +136,17 @@
       if(config.cloudEnvId)opt.env=config.cloudEnvId;
       wx.cloud.init(opt);
       cloudReady=true;
-      sync().catch(function(){});
-      syncTimer=setInterval(function(){sync().catch(function(){});},15000);
+
+      function retrySync(delays,index){
+        sync().catch(function(err){
+          try{console.warn("[public-wall] sync failed",err);}catch(e){}
+          if(index<delays.length){
+            setTimeout(function(){retrySync(delays,index+1);},delays[index]);
+          }
+        });
+      }
+      retrySync([1000,3000,8000],0);
+      syncTimer=setInterval(function(){sync().catch(function(){});},12000);
     }catch(e){
       cloudReady=false;
       setCloudError(e);
@@ -147,7 +158,10 @@
     currentUserId:getUserId,
     get modeLabel(){
       if(cloudReady&&!cloudError)return "全体留言 · 在线";
-      if(cloudReady)return "全体留言 · 正在重连";
+      if(cloudReady){
+        var shortErr=String(cloudError||"").replace(/\s+/g," ").slice(0,46);
+        return "全体留言 · 重连中"+(shortErr?" · "+shortErr:"");
+      }
       return "全体留言 · 云服务未连接";
     },
     isOnline:function(){return !!cloudReady&&!cloudError;},
