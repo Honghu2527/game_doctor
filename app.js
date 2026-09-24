@@ -2543,7 +2543,7 @@
       "<div class=\"community-actions\">"+
         "<button class=\"social-btn "+(liked?"liked":"")+"\" data-action=\"like\" data-message=\""+m.id+"\">"+(liked?"♥":"♡")+" <span>"+(m.likes||[]).length+"</span></button>"+
         "<button class=\"social-btn\" data-action=\"focus-comment\" data-message=\""+m.id+"\">💬 <span>"+comments.length+"</span></button>"+
-        (canDelete?"<button class=\"social-btn danger-link\" data-action=\"delete-message\" data-message=\""+m.id+"\">删除留言</button>":"")+
+        (canDelete?"<button class=\"social-btn danger-link\" data-action=\"delete-message\" data-message=\""+m.id+"\">删除留言</button>":"<button class=\"social-btn\" data-action=\"report-message\" data-message=\""+m.id+"\">举报</button>")+
       "</div>"+
       "<div class=\"comment-section\">"+
         "<div class=\"comment-list\">"+(comments.length?comments.map(function(x){return commentHtml(m,x);}).join(""):"<div class=\"no-comment\">还没有评论，留下第一条回复。</div>")+"</div>"+
@@ -2568,18 +2568,33 @@
       el("messageFeedback").textContent="先写下一句话再提交。";
       return;
     }
+    if(BOARD.isOnline&&!BOARD.isOnline()){
+      el("messageFeedback").hidden=false;
+      el("messageFeedback").textContent="全体留言墙暂未连接，请稍后再试。";
+      return;
+    }
     var school=currentSchool();
-    BOARD.createMessage({
+    el("messageFeedback").hidden=false;
+    el("messageFeedback").textContent="正在进行内容安全检查并发布到全体留言墙…";
+    var task=BOARD.createMessage({
       message:msg,
       author:state.name||"匿名医学生",
       school:school?school.name:"未知起点",
       ending:el("endingTitle").textContent||"医学人生"
     });
-    input.value="";
-    el("messageCount").textContent="0 / 200";
-    el("messageFeedback").hidden=false;
-    el("messageFeedback").textContent="已发布。当前网页版会立即更新本地留言墙；接入云数据库后，同样的界面会实时同步其他玩家的新留言。";
-    renderWall();
+    if(task&&typeof task.then==="function"){
+      task.then(function(){
+        input.value="";
+        el("messageCount").textContent="0 / 200";
+        el("messageFeedback").hidden=false;
+        el("messageFeedback").textContent="发布成功，其他玩家现在可以看到这条留言。";
+        renderWall();
+      }).catch(function(err){
+        el("messageFeedback").hidden=false;
+        el("messageFeedback").textContent=(err&&err.message)||"发布失败，请稍后再试。";
+        render();
+      });
+    }
   }
 
   function handleBoardAction(target){
@@ -2610,8 +2625,25 @@
     }
     if(action==="delete-message"){
       if(window.confirm("确定删除你自己的这条留言吗？")){
-        BOARD.deleteMessage(messageId);
-        renderWall();
+        var delTask=BOARD.deleteMessage(messageId);
+        if(delTask&&delTask.then)delTask.then(renderWall).catch(function(){});
+        else renderWall();
+      }
+      return;
+    }
+    if(action==="report-message"){
+      if(BOARD.reportMessage){
+        var reportTask=BOARD.reportMessage(messageId);
+        if(reportTask&&reportTask.then){
+          reportTask.then(function(res){
+            el("messageFeedback").hidden=false;
+            el("messageFeedback").textContent=(res&&res.message)||"已收到举报。";
+            renderWall();
+          }).catch(function(err){
+            el("messageFeedback").hidden=false;
+            el("messageFeedback").textContent=(err&&err.message)||"举报失败，请稍后再试。";
+          });
+        }
       }
       return;
     }
@@ -2827,7 +2859,9 @@
   el("viewAllMessagesBtn").addEventListener("click",function(){
     el("allMessagesPanel").hidden=false;
     renderWall();
-    el("allMessagesPanel").scrollIntoView({behavior:"smooth",block:"start"});
+    window.setTimeout(function(){
+      el("allMessagesPanel").scrollIntoView({behavior:"smooth",block:"start"});
+    },40);
   });
   el("closeAllMessagesBtn").addEventListener("click",function(){
     el("allMessagesPanel").hidden=true;
