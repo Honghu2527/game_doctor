@@ -261,12 +261,60 @@ async function reportMessage(openid, messageId) {
   };
 }
 
+async function moderateStoredMessage(m) {
+  if (!m || !m._id) return { ok: false, reason: "not_found" };
+  if (m.status === "approved" && m.hidden !== true) {
+    return { ok: true, approved: true, id: m._id };
+  }
+  if (m.status === "rejected") {
+    return { ok: true, approved: false, id: m._id };
+  }
+
+  let safe = false;
+  try {
+    safe = await contentPass((m.author || "匿名医学生") + "\n" + (m.message || ""), m.ownerOpenId || "");
+  } catch (e) {
+    console.error("background msgSecCheck failed", m._id, e);
+    return { ok: false, reason: "security_unavailable", id: m._id };
+  }
+
+  if (!safe) {
+    await db.collection(COLLECTION).doc(m._id).update({
+      data: { status: "rejected", hidden: true, moderatedAt: Date.now() }
+    });
+    return { ok: true, approved: false, id: m._id };
+  }
+
+  await db.collection(COLLECTION).doc(m._id).update({
+    data: { status: "approved", hidden: false, moderatedAt: Date.now() }
+  });
+  return { ok: true, approved: true, id: m._id };
+}
+
+async function moderatePendingBatch() {
+  const res = await db.collection(COLLECTION)
+    .where({ status: "pending" })
+    .limit(1)
+    .get();
+
+  const item = res.data && res.data[0];
+  if (!item) return { ok: true, processed: 0 };
+
+  const result = await moderateStoredMessage(item);
+  return { ok: true, processed: 1, result };
+}
+
 exports.main = async (event) => {
   const wxContext = cloud.getWXContext();
   const openid = wxContext.OPENID;
   const action = cleanText(event && event.action, 40);
 
   try {
+    /* 定时触发器不会传业务 action；此时只处理一条待审核留言，
+       避免单次函数执行过久。 */
+    if (!action || action === "processPending") {
+      return await moderatePendingBatch();
+    }
     if (action === "list") {
       return { ok: true, messages: await listMessages(openid, event.limit) };
     }
