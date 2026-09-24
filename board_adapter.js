@@ -1,11 +1,18 @@
 (function(){
   "use strict";
 
-  var BOARD_KEY="doctor-life-message-wall-v2";
-  var LEGACY_KEY="doctor-life-message-wall-v1";
+  var CACHE_KEY="doctor-life-public-wall-cache-v1";
   var USER_KEY="doctor-life-community-user-v1";
-  var MAX_MESSAGES=500;
   var listeners=[];
+  var cache=[];
+  var syncTimer=null;
+  var cloudReady=false;
+  var cloudError="";
+  var config={};
+
+  try{
+    if(typeof require==="function")config=require("./src/config.js")||{};
+  }catch(e){config={};}
 
   function now(){return Date.now();}
   function uid(prefix){
@@ -26,141 +33,174 @@
       return "local_user";
     }
   }
+  function saveCache(){
+    try{localStorage.setItem(CACHE_KEY,JSON.stringify(cache.slice(0,100)));}catch(e){}
+  }
+  function loadCache(){
+    try{
+      var raw=safeParse(localStorage.getItem(CACHE_KEY),[]);
+      return Array.isArray(raw)?raw:[];
+    }catch(e){return [];}
+  }
+  function syntheticLikes(count,likedByMe){
+    var out=[],me=getUserId();
+    if(likedByMe)out.push(me);
+    for(var i=out.length;i<Math.max(0,Number(count)||0);i++)out.push("remote_"+i);
+    return out;
+  }
   function normalizeComment(c){
     return {
       id:c.id||uid("c"),
-      ownerId:c.ownerId||"legacy",
-      author:c.author||"匿名医学生",
+      ownerId:c.mine?getUserId():"remote",
+      author:String(c.author||"匿名医学生").slice(0,18),
       text:String(c.text||"").slice(0,120),
-      createdAt:c.createdAt||now()
+      createdAt:Number(c.createdAt)||now()
     };
   }
   function normalizeMessage(m){
     return {
-      id:m.id||uid("m"),
-      ownerId:m.ownerId||"legacy",
-      author:m.author||"匿名医学生",
-      school:m.school||"未知起点",
-      ending:m.ending||"医学人生",
+      id:m.id||m._id||uid("m"),
+      ownerId:m.mine?getUserId():"remote",
+      author:String(m.author||"匿名医学生").slice(0,18),
+      school:String(m.school||"未知起点").slice(0,40),
+      ending:String(m.ending||"医学人生").slice(0,40),
       message:String(m.message||"").slice(0,200),
-      createdAt:m.createdAt||now(),
-      likes:Array.isArray(m.likes)?m.likes:[],
+      createdAt:Number(m.createdAt)||now(),
+      likes:syntheticLikes(m.likesCount!==undefined?m.likesCount:(m.likes||[]).length,!!m.likedByMe),
       comments:Array.isArray(m.comments)?m.comments.map(normalizeComment):[]
     };
   }
-  function read(){
-    try{
-      var raw=localStorage.getItem(BOARD_KEY);
-      if(raw){
-        return safeParse(raw,[]).map(normalizeMessage);
-      }
-      var legacy=safeParse(localStorage.getItem(LEGACY_KEY),[]);
-      if(legacy.length){
-        var owner=getUserId();
-        var migrated=legacy.map(function(item){
-          var copy=Object.assign({},item);
-          copy.ownerId=owner;
-          copy.createdAt=copy.createdAt||Date.now();
-          return normalizeMessage(copy);
-        });
-        write(migrated);
-        return migrated;
-      }
-    }catch(e){}
-    return [];
-  }
-  function write(list){
-    var trimmed=list.slice(0,MAX_MESSAGES);
-    try{localStorage.setItem(BOARD_KEY,JSON.stringify(trimmed));}catch(e){}
-    emit(trimmed);
-    return trimmed;
-  }
-  function emit(list){
-    listeners.forEach(function(fn){
-      try{fn(list||read());}catch(e){}
+  function emit(){
+    listeners.slice().forEach(function(fn){
+      try{fn(cache.slice());}catch(e){}
     });
   }
-  function findMessage(list,id){
-    return list.find(function(m){return m.id===id;});
+  function sortList(list,sort){
+    list=list.slice();
+    if(sort==="liked"){
+      list.sort(function(a,b){
+        var d=(b.likes||[]).length-(a.likes||[]).length;
+        return d||b.createdAt-a.createdAt;
+      });
+    }else{
+      list.sort(function(a,b){return b.createdAt-a.createdAt;});
+    }
+    return list;
+  }
+  function setCloudError(err){
+    cloudError=String(err&&err.message||err||"");
+  }
+  function callCloud(action,data){
+    if(!cloudReady||typeof wx==="undefined"||!wx.cloud||!wx.cloud.callFunction){
+      return Promise.reject(new Error("online_board_unavailable"));
+    }
+    return wx.cloud.callFunction({
+      name:"messageBoard",
+      data:Object.assign({action:action},data||{})
+    }).then(function(res){
+      var body=res&&res.result||{};
+      if(body&&body.ok===false){
+        var err=new Error(body.message||body.reason||"留言服务暂不可用");
+        err.code=body.reason||"cloud_error";
+        throw err;
+      }
+      return body;
+    });
+  }
+  function sync(){
+    if(!cloudReady)return Promise.resolve(cache);
+    return callCloud("list",{limit:100}).then(function(body){
+      var list=body&&body.messages||[];
+      cache=list.map(normalizeMessage);
+      saveCache();
+      cloudError="";
+      emit();
+      return cache;
+    }).catch(function(err){
+      setCloudError(err);
+      emit();
+      throw err;
+    });
+  }
+  function initCloud(){
+    cache=loadCache().map(normalizeMessage);
+    if(typeof wx==="undefined"||!wx.cloud||config.messageBoardEnabled===false){
+      cloudReady=false;
+      cloudError="cloud_not_enabled";
+      return;
+    }
+    try{
+      var opt={traceUser:true};
+      if(config.cloudEnvId)opt.env=config.cloudEnvId;
+      wx.cloud.init(opt);
+      cloudReady=true;
+      sync().catch(function(){});
+      syncTimer=setInterval(function(){sync().catch(function(){});},15000);
+    }catch(e){
+      cloudReady=false;
+      setCloudError(e);
+    }
   }
 
   var api={
-    mode:"local",
-    modeLabel:"本地演示",
+    mode:"cloud",
     currentUserId:getUserId,
-    list:function(sort){
-      var list=read().slice();
-      if(sort==="liked"){
-        list.sort(function(a,b){
-          var d=(b.likes||[]).length-(a.likes||[]).length;
-          return d||b.createdAt-a.createdAt;
-        });
-      }else{
-        list.sort(function(a,b){return b.createdAt-a.createdAt;});
-      }
-      return list;
+    get modeLabel(){
+      if(cloudReady&&!cloudError)return "全体留言 · 在线";
+      if(cloudReady)return "全体留言 · 正在重连";
+      return "全体留言 · 云服务未连接";
     },
-    latest:function(limit){
-      return api.list("newest").slice(0,limit||10);
-    },
+    isOnline:function(){return !!cloudReady&&!cloudError;},
+    lastError:function(){return cloudError;},
+    refresh:function(){return sync();},
+    list:function(sort){return sortList(cache,sort);},
+    latest:function(limit){return sortList(cache,"newest").slice(0,limit||10);},
+
     createMessage:function(payload){
-      var list=read();
-      var item=normalizeMessage({
-        id:uid("m"),
-        ownerId:getUserId(),
-        author:payload.author,
-        school:payload.school,
-        ending:payload.ending,
-        message:payload.message,
-        createdAt:now(),
-        likes:[],
-        comments:[]
-      });
-      list.unshift(item);
-      write(list);
-      return item;
+      payload=payload||{};
+      if(!cloudReady)return Promise.reject(new Error("请先连接在线留言服务"));
+      return callCloud("create",{
+        author:String(payload.author||"匿名医学生").slice(0,18),
+        school:String(payload.school||"未知起点").slice(0,40),
+        ending:String(payload.ending||"医学人生").slice(0,40),
+        message:String(payload.message||"").trim().slice(0,200)
+      }).then(function(){return sync();});
     },
+
     deleteMessage:function(messageId){
-      var me=getUserId(),list=read(),m=findMessage(list,messageId);
-      if(!m||m.ownerId!==me)return {ok:false,reason:"forbidden"};
-      list=list.filter(function(x){return x.id!==messageId;});
-      write(list);
-      return {ok:true};
+      if(!cloudReady)return Promise.reject(new Error("在线留言服务未连接"));
+      return callCloud("deleteMessage",{messageId:messageId}).then(function(){return sync();});
     },
+
     toggleLike:function(messageId){
-      var me=getUserId(),list=read(),m=findMessage(list,messageId);
-      if(!m)return {ok:false,reason:"not_found"};
-      var idx=m.likes.indexOf(me);
-      if(idx>=0)m.likes.splice(idx,1);else m.likes.push(me);
-      write(list);
-      return {ok:true,liked:idx<0,count:m.likes.length};
-    },
-    addComment:function(messageId,payload){
-      var list=read(),m=findMessage(list,messageId);
-      if(!m)return {ok:false,reason:"not_found"};
-      var text=String(payload.text||"").trim().slice(0,120);
-      if(!text)return {ok:false,reason:"empty"};
-      var c=normalizeComment({
-        id:uid("c"),
-        ownerId:getUserId(),
-        author:payload.author||"匿名医学生",
-        text:text,
-        createdAt:now()
+      if(!cloudReady)return Promise.reject(new Error("在线留言服务未连接"));
+      return callCloud("toggleLike",{messageId:messageId}).then(function(body){
+        return sync().then(function(){return body;});
       });
-      m.comments.push(c);
-      write(list);
-      return {ok:true,comment:c};
     },
+
+    addComment:function(messageId,payload){
+      payload=payload||{};
+      if(!cloudReady)return Promise.reject(new Error("在线留言服务未连接"));
+      return callCloud("addComment",{
+        messageId:messageId,
+        author:String(payload.author||"匿名医学生").slice(0,18),
+        text:String(payload.text||"").trim().slice(0,120)
+      }).then(function(){return sync();});
+    },
+
     deleteComment:function(messageId,commentId){
-      var me=getUserId(),list=read(),m=findMessage(list,messageId);
-      if(!m)return {ok:false,reason:"not_found"};
-      var c=m.comments.find(function(x){return x.id===commentId;});
-      if(!c)return {ok:false,reason:"not_found"};
-      if(c.ownerId!==me&&m.ownerId!==me)return {ok:false,reason:"forbidden"};
-      m.comments=m.comments.filter(function(x){return x.id!==commentId;});
-      write(list);
-      return {ok:true};
+      if(!cloudReady)return Promise.reject(new Error("在线留言服务未连接"));
+      return callCloud("deleteComment",{messageId:messageId,commentId:commentId}).then(function(){return sync();});
     },
+
+    reportMessage:function(messageId){
+      if(!cloudReady)return Promise.reject(new Error("在线留言服务未连接"));
+      return callCloud("report",{messageId:messageId}).then(function(body){
+        return sync().then(function(){return body;});
+      });
+    },
+
     canDeleteMessage:function(m){
       return !!m&&m.ownerId===getUserId();
     },
@@ -170,13 +210,11 @@
     },
     subscribe:function(fn){
       listeners.push(fn);
+      try{fn(cache.slice());}catch(e){}
       return function(){listeners=listeners.filter(function(x){return x!==fn;});};
     }
   };
 
-  window.addEventListener("storage",function(e){
-    if(e.key===BOARD_KEY)emit();
-  });
-
+  initCloud();
   window.MESSAGE_BOARD=api;
 })();
