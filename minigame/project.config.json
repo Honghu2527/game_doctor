@@ -10,5 +10,6 @@
     "minified": true,
     "urlCheck": false,
     "checkSiteMap": false
-  }
+  },
+  "cloudfunctionRoot": "cloudfunctions/"
 }
