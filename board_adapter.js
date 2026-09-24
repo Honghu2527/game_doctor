@@ -6,6 +6,7 @@
   var listeners=[];
   var cache=[];
   var syncTimer=null;
+  var syncPromise=null;
   var cloudReady=false;
   var cloudError="";
   var config={};
@@ -96,7 +97,9 @@
     }
     var options={
       name:"messageBoard",
-      data:Object.assign({action:action},data||{})
+      data:Object.assign({action:action},data||{}),
+      /* 微信云开发慢调用模式：公开留言发布包含内容安全检查，避免普通轮询窗口过短触发 -404005。 */
+      slow:true
     };
     if(config.cloudEnvId)options.config={env:config.cloudEnvId};
     return wx.cloud.callFunction(options).then(function(res){
@@ -111,7 +114,8 @@
   }
   function sync(){
     if(!cloudReady)return Promise.resolve(cache);
-    return callCloud("list",{limit:100}).then(function(body){
+    if(syncPromise)return syncPromise;
+    syncPromise=callCloud("list",{limit:40}).then(function(body){
       var list=body&&body.messages||[];
       cache=list.map(normalizeMessage);
       saveCache();
@@ -123,6 +127,14 @@
       emit();
       throw err;
     });
+    syncPromise=syncPromise.then(function(value){
+      syncPromise=null;
+      return value;
+    },function(err){
+      syncPromise=null;
+      throw err;
+    });
+    return syncPromise;
   }
   function initCloud(){
     cache=loadCache().map(normalizeMessage);
@@ -137,16 +149,11 @@
       wx.cloud.init(opt);
       cloudReady=true;
 
-      function retrySync(delays,index){
-        sync().catch(function(err){
-          try{console.warn("[public-wall] sync failed",err);}catch(e){}
-          if(index<delays.length){
-            setTimeout(function(){retrySync(delays,index+1);},delays[index]);
-          }
-        });
-      }
-      retrySync([1000,3000,8000],0);
-      syncTimer=setInterval(function(){sync().catch(function(){});},12000);
+      sync().catch(function(err){
+        try{console.warn("[public-wall] initial sync failed",err);}catch(e){}
+      });
+      /* 留言墙不是聊天 IM，不需要高频轮询；降低免费环境并发和客户端轮询压力。 */
+      syncTimer=setInterval(function(){sync().catch(function(){});},60000);
     }catch(e){
       cloudReady=false;
       setCloudError(e);
@@ -159,7 +166,9 @@
     get modeLabel(){
       if(cloudReady&&!cloudError)return "全体留言 · 在线";
       if(cloudReady){
-        var shortErr=String(cloudError||"").replace(/\s+/g," ").slice(0,46);
+        var rawErr=String(cloudError||"").replace(/\s+/g," ");
+        if(/-404005|exceed max poll/i.test(rawErr))return "全体留言 · 云端响应较慢，可继续重试";
+        var shortErr=rawErr.slice(0,46);
         return "全体留言 · 重连中"+(shortErr?" · "+shortErr:"");
       }
       return "全体留言 · 云服务未连接";
