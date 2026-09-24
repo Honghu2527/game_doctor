@@ -2568,11 +2568,7 @@
       el("messageFeedback").textContent="先写下一句话再提交。";
       return;
     }
-    if(BOARD.isOnline&&!BOARD.isOnline()){
-      el("messageFeedback").hidden=false;
-      el("messageFeedback").textContent="全体留言墙暂未连接，请稍后再试。";
-      return;
-    }
+    /* 不因一次列表同步失败就阻止发布；真正的云函数调用结果才是准确信号。 */
     var school=currentSchool();
     el("messageFeedback").hidden=false;
     el("messageFeedback").textContent="正在进行内容安全检查并发布到全体留言墙…";
@@ -2676,6 +2672,11 @@
     if(BOARD&&BOARD.refresh){
       BOARD.refresh().then(function(){
         if(el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
+        var feedback=el("messageFeedback");
+        if(feedback&&/未连接|重连|连接/.test(feedback.textContent||"")){
+          feedback.textContent="";
+          feedback.hidden=true;
+        }
         renderWall();
       }).catch(function(){
         if(el("boardModeLabel"))el("boardModeLabel").textContent=BOARD.modeLabel||"留言板";
