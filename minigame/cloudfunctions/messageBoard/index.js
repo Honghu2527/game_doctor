@@ -76,7 +76,7 @@ async function listMessages(openid, limit) {
     .map(m => publicMessage(m, openid));
 }
 
-async function createMessage(openid, event) {
+async function createPending(openid, event) {
   const author = cleanText(event.author || "匿名医学生", 18) || "匿名医学生";
   const school = cleanText(event.school || "未知起点", 40) || "未知起点";
   const ending = cleanText(event.ending || "医学人生", 40) || "医学人生";
@@ -94,18 +94,6 @@ async function createMessage(openid, event) {
     return { ok: false, reason: "too_fast", message: "留言太快啦，请稍等十几秒再发布。" };
   }
 
-  let safe = false;
-  try {
-    safe = await contentPass(author + "\n" + message, openid);
-  } catch (e) {
-    console.error("msgSecCheck failed", e);
-    return { ok: false, reason: "security_unavailable", message: "内容安全检查暂时不可用，请稍后再试。" };
-  }
-
-  if (!safe) {
-    return { ok: false, reason: "content_rejected", message: "这条留言未通过内容安全检查，请修改后再试。" };
-  }
-
   const createdAt = Date.now();
   const add = await db.collection(COLLECTION).add({
     data: {
@@ -118,12 +106,46 @@ async function createMessage(openid, event) {
       likes: [],
       comments: [],
       reports: [],
-      status: "approved",
-      hidden: false
+      status: "pending",
+      hidden: true
     }
   });
 
-  return { ok: true, id: add._id, createdAt };
+  return { ok: true, id: add._id, createdAt, pending: true };
+}
+
+async function moderateMessage(openid, messageId) {
+  const m = await getMessage(messageId);
+  if (!m) return { ok: false, reason: "not_found", message: "留言不存在。" };
+  if (m.ownerOpenId !== openid) {
+    return { ok: false, reason: "forbidden", message: "不能审核其他玩家的留言。" };
+  }
+  if (m.status === "approved" && m.hidden !== true) {
+    return { ok: true, approved: true, id: messageId };
+  }
+  if (m.status === "rejected") {
+    return { ok: true, approved: false, id: messageId, message: "这条留言未通过内容安全检查，请修改后再试。" };
+  }
+
+  let safe = false;
+  try {
+    safe = await contentPass((m.author || "匿名医学生") + "\n" + (m.message || ""), openid);
+  } catch (e) {
+    console.error("msgSecCheck failed", e);
+    return { ok: false, reason: "security_unavailable", message: "内容安全检查暂时不可用，请稍后再试。" };
+  }
+
+  if (!safe) {
+    await db.collection(COLLECTION).doc(messageId).update({
+      data: { status: "rejected", hidden: true, moderatedAt: Date.now() }
+    });
+    return { ok: true, approved: false, id: messageId, message: "这条留言未通过内容安全检查，请修改后再试。" };
+  }
+
+  await db.collection(COLLECTION).doc(messageId).update({
+    data: { status: "approved", hidden: false, moderatedAt: Date.now() }
+  });
+  return { ok: true, approved: true, id: messageId };
 }
 
 async function getMessage(messageId) {
@@ -248,7 +270,8 @@ exports.main = async (event) => {
     if (action === "list") {
       return { ok: true, messages: await listMessages(openid, event.limit) };
     }
-    if (action === "create") return await createMessage(openid, event || {});
+    if (action === "createPending") return await createPending(openid, event || {});
+    if (action === "moderateMessage") return await moderateMessage(openid, cleanText(event.messageId, 80));
     if (action === "toggleLike") return await toggleLike(openid, cleanText(event.messageId, 80));
     if (action === "addComment") return await addComment(openid, event || {});
     if (action === "deleteMessage") return await deleteMessage(openid, cleanText(event.messageId, 80));
