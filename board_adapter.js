@@ -97,9 +97,7 @@
     }
     var options={
       name:"messageBoard",
-      data:Object.assign({action:action},data||{}),
-      /* 微信云开发慢调用模式：公开留言发布包含内容安全检查，避免普通轮询窗口过短触发 -404005。 */
-      slow:true
+      data:Object.assign({action:action},data||{})
     };
     if(config.cloudEnvId)options.config={env:config.cloudEnvId};
     return wx.cloud.callFunction(options).then(function(res){
@@ -182,12 +180,52 @@
     createMessage:function(payload){
       payload=payload||{};
       if(!cloudReady)return Promise.reject(new Error("请先连接在线留言服务"));
-      return callCloud("create",{
+      var body={
         author:String(payload.author||"匿名医学生").slice(0,18),
         school:String(payload.school||"未知起点").slice(0,40),
         ending:String(payload.ending||"医学人生").slice(0,40),
         message:String(payload.message||"").trim().slice(0,200)
-      }).then(function(){return sync();});
+      };
+      /* 第一步快速写入 pending，避免内容安全检查占住客户端调用窗口。 */
+      return callCloud("createPending",body).then(function(created){
+        var id=created&&created.id;
+        if(!id)throw new Error("留言创建失败，请稍后再试。");
+
+        /* 第二步审核。即使客户端等待审核响应超时，也继续通过 list 轮询最终公开状态。 */
+        return callCloud("moderateMessage",{messageId:id}).then(function(result){
+          if(result&&result.approved===false){
+            throw new Error(result.message||"这条留言未通过内容安全检查，请修改后再试。");
+          }
+          return sync().then(function(){return result;});
+        }).catch(function(err){
+          var raw=String(err&&err.message||err||"");
+          if(/-404005|exceed max poll|timeout|timed out/i.test(raw)){
+            return new Promise(function(resolve,reject){
+              var tries=0;
+              function check(){
+                tries++;
+                sync().then(function(list){
+                  var found=(list||[]).some(function(m){return m.id===id;});
+                  if(found){resolve({ok:true,approved:true,id:id});return;}
+                  if(tries>=5){
+                    reject(new Error("留言已提交审核，请稍后刷新全体留言墙查看结果。"));
+                    return;
+                  }
+                  setTimeout(check,tries<3?1800:3200);
+                }).catch(function(){
+                  if(tries>=5){
+                    reject(new Error("留言已提交审核，请稍后刷新全体留言墙查看结果。"));
+                    return;
+                  }
+                  setTimeout(check,2200);
+                });
+              }
+              setTimeout(check,1600);
+            });
+          }
+          throw err;
+        });
+      });
     },
 
     deleteMessage:function(messageId){
