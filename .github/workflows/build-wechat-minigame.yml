@@ -232,6 +232,9 @@ jobs:
           grep -q 'messageBoardEnabled: true' dist/wechat-minigame/src/config.js
           grep -q '全体留言' dist/wechat-minigame/src/renderer.js
           grep -q 'wx.cloud.callFunction' dist/wechat-minigame/app-board.js
+          grep -q 'moderatePendingMessages' dist/wechat-minigame/cloudfunctions/messageBoard/config.json
+          grep -q 'createPending' dist/wechat-minigame/app-board.js
+          grep -q 'moderatePendingBatch' dist/wechat-minigame/cloudfunctions/messageBoard/index.js
           test ! -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
           test ! -f dist/wechat-minigame/src/main.js
           grep -q '"compileType": "game"' dist/wechat-minigame/project.config.json
