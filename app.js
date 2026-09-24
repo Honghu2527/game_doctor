@@ -2571,7 +2571,7 @@
     /* 不因一次列表同步失败就阻止发布；真正的云函数调用结果才是准确信号。 */
     var school=currentSchool();
     el("messageFeedback").hidden=false;
-    el("messageFeedback").textContent="正在进行内容安全检查并发布到全体留言墙…";
+    el("messageFeedback").textContent="正在提交留言…";
     var task=BOARD.createMessage({
       message:msg,
       author:state.name||"匿名医学生",
@@ -2583,7 +2583,7 @@
         input.value="";
         el("messageCount").textContent="0 / 200";
         el("messageFeedback").hidden=false;
-        el("messageFeedback").textContent="发布成功，其他玩家现在可以看到这条留言。";
+        el("messageFeedback").textContent="已提交审核。审核通过后会自动出现在全体留言墙，通常一分钟内完成。";
         renderWall();
       }).catch(function(err){
         el("messageFeedback").hidden=false;
