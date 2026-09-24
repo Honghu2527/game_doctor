@@ -53,6 +53,7 @@ var scrollFrameId=0;
 var scrollFrameRunning=false;
 var lastTouchTime=0;
 var bufferWarmTimer=null;
+var messageTickerTimer=null;
 
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function docVisible(y,h,margin){
@@ -895,12 +896,90 @@ function parseSpanList(html){
   while((m=re.exec(String(html||""))))out.push(plain(m[1]));
   return out;
 }
+function publicBoard(){
+  return G.MESSAGE_BOARD||null;
+}
+function scheduleMessageTicker(){
+  if(messageTickerTimer)return;
+  if(!E.endingScreen||E.endingScreen.hidden)return;
+  var board=publicBoard();
+  var list=board&&board.latest?board.latest(8):[];
+  if(list.length<=1)return;
+  messageTickerTimer=setTimeout(function(){
+    messageTickerTimer=null;
+    if(E.endingScreen&&!E.endingScreen.hidden)render();
+  },3200);
+}
+function drawPublicMessageCard(m,x,y,w,h,compact){
+  rr(x,y,w,h,compact?12:14,"#fffdf9","#ded7cc");
+  var author=(m&&m.author)||"匿名医学生";
+  var school=(m&&m.school)||"未知起点";
+  var ending=(m&&m.ending)||"医学人生";
+  var msg=(m&&m.message)||"";
+  text(author,x+12,y+9,w-24,14,{font:"800 9px sans-serif",color:"#25423f",maxLines:1});
+  text(school+" · "+ending,x+12,y+25,w-24,13,{font:"7px sans-serif",color:"#7b8582",maxLines:1});
+  text(msg,x+12,y+43,w-24,15,{font:compact?"9px sans-serif":"10px sans-serif",color:"#394c4e",maxLines:compact?2:3});
+  if(!compact){
+    var likes=m&&m.likes?m.likes.length:0;
+    var comments=m&&m.comments?m.comments.length:0;
+    text("♡ "+likes+"   💬 "+comments,x+12,y+h-18,w-24,12,{font:"7px sans-serif",color:"#8b8b85",maxLines:1});
+  }
+}
+function drawAllPublicMessages(y,x,w){
+  var board=publicBoard();
+  var list=board&&board.list?board.list("newest"):[];
+  var visible=!E.allMessagesPanel.hidden;
+  var sectionX=x+22,sectionW=w-44;
+  E.allMessagesPanel._rect={x:sectionX,docY:y,w:sectionW,h:visible?120:1};
+  if(!visible)return {bottom:y,height:0};
+
+  var shown=list.slice(0,40);
+  var cardH=100,gap=9;
+  var sectionH=76+Math.max(1,shown.length)*(cardH+gap)+18;
+  E.allMessagesPanel._rect={x:sectionX,docY:y,w:sectionW,h:sectionH};
+
+  rr(sectionX,y,sectionW,sectionH,18,"rgba(255,253,248,.98)",C.line);
+  text("PUBLIC MESSAGE WALL",sectionX+16,y+13,sectionW-90,12,{font:"800 8px sans-serif",color:C.accent});
+  text("全体留言",sectionX+16,y+30,sectionW-90,22,{font:"800 16px sans-serif",color:"#21373b"});
+  text("最近 "+shown.length+" 条公开留言",sectionX+16,y+54,sectionW-90,13,{font:"8px sans-serif",color:C.muted});
+  rr(sectionX+sectionW-68,y+17,52,28,9,"#f4eee5","#ddd3c5");
+  text("收起",sectionX+sectionW-42,y+24,42,13,{font:"800 9px sans-serif",color:C.ink,align:"center"});
+  addHit(E.closeAllMessagesBtn,sectionX+sectionW-68,y+17,52,28,function(){E.closeAllMessagesBtn.click();});
+
+  var cy=y+76;
+  if(!shown.length){
+    rr(sectionX+14,cy,sectionW-28,78,13,"#fff","#e2dad0");
+    text("还没有公开留言。完成一局后，你可以成为第一位留言者。",sectionX+28,cy+22,sectionW-56,18,{font:"10px sans-serif",color:C.muted,maxLines:2});
+    cy+=87;
+  }else{
+    var me=board&&board.currentUserId?board.currentUserId():"";
+    shown.forEach(function(m){
+      if(docVisible(cy,cardH,120)){
+        drawPublicMessageCard(m,sectionX+14,cy,sectionW-28,cardH,false);
+        if(m.ownerId!==me&&board&&board.reportMessage){
+          rr(sectionX+sectionW-66,cy+cardH-27,40,18,7,"#f7f2ea","#e2d8c9");
+          text("举报",sectionX+sectionW-46,cy+cardH-23,34,11,{font:"700 7px sans-serif",color:"#8a5a55",align:"center"});
+          addHit(null,sectionX+sectionW-66,cy+cardH-27,40,18,function(){
+            var task=board.reportMessage(m.id);
+            if(task&&task.then)task.then(function(){render();}).catch(function(){});
+          });
+        }
+      }
+      cy+=cardH+gap;
+    });
+  }
+  return {bottom:y+sectionH,height:sectionH};
+}
+
 function drawEnding(y){
   var x=shellX,w=shellW,panelY=y;
   var stats=parseEndingStats();
   var tags=extractAllClass(E.endingTags.innerHTML,"ending-tag");
   var journey=parseEndingJourney();
   var research=parseSpanList(E.endingResearchSummary.innerHTML);
+  var board=publicBoard();
+  var tickerMessages=board&&board.latest?board.latest(8):[];
+  var allMessages=board&&board.list?board.list("newest"):[];
 
   var statsGap=8,statsCols=3,statsW=(w-44-statsGap*(statsCols-1))/statsCols;
   var statsRows=Math.max(1,Math.ceil(Math.max(stats.length,1)/statsCols));
@@ -919,8 +998,10 @@ function drawEnding(y){
   var journeyCardsH=journeyRows*62+(journeyRows-1)*8;
   var archiveH=62+journeyCardsH+18;
 
-  var boardH=210;
-  var ph=24+26+20+95+18+132+14+statsH+18+tagsH+(tags.length?18:0)+archiveH+14+boardH+12+46+10+54+28;
+  var boardH=338;
+  var allPreviewCount=Math.min(40,allMessages.length);
+  var allSectionH=!E.allMessagesPanel.hidden?(76+Math.max(1,allPreviewCount)*(100+9)+18):0;
+  var ph=24+26+20+95+18+132+14+statsH+18+tagsH+(tags.length?18:0)+archiveH+14+boardH+12+allSectionH+(allSectionH?14:0)+46+10+54+28;
   panel(x,panelY,w,ph,20);
   var cy=panelY+24;
 
@@ -978,17 +1059,46 @@ function drawEnding(y){
   var boardY=cy;
   rr(x+22,boardY,w-44,boardH,18,"rgba(255,253,248,.95)",C.line);
   vdom.legacyBoard._rect={x:x+22,docY:boardY,w:w-44,h:boardH};
-  text("MESSAGE TO THE NEXT STUDENT",x+36,boardY+13,w-72,12,{font:"800 8px sans-serif",color:C.accent});
-  text("给下一位医学生的一句话",x+36,boardY+31,w-72,19,{font:"800 14px sans-serif"});
-  text("当前版本留言保存在本机。后续开启在线留言墙后，可与其他玩家互动。",
-    x+36,boardY+56,w-72,15,{font:"9px sans-serif",color:C.muted,maxLines:2});
-  rr(x+36,boardY+108,w-72,46,13,"#fff",C.line);
-  text(E.legacyMessage.value||"例如：别只盯着结果，先想清楚自己想成为什么样的医生。",x+48,boardY+120,w-96,15,{font:"9px sans-serif",color:E.legacyMessage.value?C.ink:"#99948d",maxLines:2});
-  addHit(E.legacyMessage,x+36,boardY+108,w-72,46,function(){focusInput(E.legacyMessage,200,true);});
-  rr(x+36,boardY+164,w-72,32,10,gradient(x+36,boardY+164,x+w-36,boardY+196,[[0,"#a0444b"],[1,"#843139"]]));
-  text("留下这句话",W/2,boardY+172,w-90,14,{font:"800 10px sans-serif",color:"#fff",align:"center"});
-  addHit(E.postMessageBtn,x+36,boardY+164,w-72,32,function(){E.postMessageBtn.click();});
+  text("PUBLIC MESSAGE WALL",x+36,boardY+13,w-72,12,{font:"800 8px sans-serif",color:C.accent});
+  text("全体留言墙",x+36,boardY+31,w-72,20,{font:"800 15px sans-serif"});
+  text((board&&board.modeLabel?board.modeLabel:"全体留言")+" · 所有玩家共享，公开前进行内容安全检查",
+    x+36,boardY+55,w-72,15,{font:"8px sans-serif",color:C.muted,maxLines:2});
+
+  var tickerY=boardY+86,tickerH=78;
+  rr(x+36,tickerY,w-72,tickerH,13,"#f5f0e8","#dfd5c7");
+  if(tickerMessages.length){
+    var tickerIndex=Math.floor(Date.now()/3200)%tickerMessages.length;
+    var tm=tickerMessages[tickerIndex];
+    text("滚动留言  "+(tickerIndex+1)+"/"+tickerMessages.length,x+48,tickerY+9,w-96,12,{font:"800 7px sans-serif",color:"#8b6c43"});
+    text("“"+tm.message+"”",x+48,tickerY+27,w-96,17,{font:"10px sans-serif",color:"#33484a",maxLines:2});
+    text("— "+tm.author+" · "+tm.school,x+48,tickerY+60,w-96,11,{font:"7px sans-serif",color:"#7a8481",maxLines:1});
+    scheduleMessageTicker();
+  }else{
+    text("还没有全体留言。完成这一局后，你可以留下第一句话。",x+48,tickerY+25,w-96,18,{font:"9px sans-serif",color:C.muted,maxLines:2});
+  }
+
+  rr(x+36,boardY+176,w-72,44,13,"#fff",C.line);
+  text(E.legacyMessage.value||"例如：别只盯着结果，先想清楚自己想成为什么样的医生。",x+48,boardY+187,w-96,15,{font:"9px sans-serif",color:E.legacyMessage.value?C.ink:"#99948d",maxLines:2});
+  addHit(E.legacyMessage,x+36,boardY+176,w-72,44,function(){focusInput(E.legacyMessage,200,true);});
+
+  rr(x+36,boardY+230,w-72,32,10,gradient(x+36,boardY+230,x+w-36,boardY+262,[[0,"#a0444b"],[1,"#843139"]]));
+  text("发布到全体留言墙",W/2,boardY+238,w-90,14,{font:"800 10px sans-serif",color:"#fff",align:"center"});
+  addHit(E.postMessageBtn,x+36,boardY+230,w-72,32,function(){E.postMessageBtn.click();});
+
+  rr(x+36,boardY+270,w-72,30,10,"#fff","#d9d0c3");
+  text("查看全体留言 · "+allMessages.length+" 条",W/2,boardY+277,w-90,14,{font:"800 9px sans-serif",color:C.ink,align:"center"});
+  addHit(E.viewAllMessagesBtn,x+36,boardY+270,w-72,30,function(){E.viewAllMessagesBtn.click();});
+
+  if(!E.messageFeedback.hidden&&E.messageFeedback.textContent){
+    text(E.messageFeedback.textContent,x+40,boardY+309,w-80,13,{font:"8px sans-serif",color:"#647573",align:"center",maxLines:2});
+  }
   cy+=boardH+12;
+
+  E.allMessagesPanel._rect={x:x+22,docY:cy,w:w-44,h:1};
+  if(!E.allMessagesPanel.hidden){
+    var allDraw=drawAllPublicMessages(cy,x,w);
+    cy=allDraw.bottom+14;
+  }
 
   cy+=ghostButton(E.endingShareBtn,x+22,cy,w-44,E.endingShareBtn.textContent||"分享我的医学人生","")+10;
   cy+=primaryButton(E.endingRestartBtn,x+22,cy,w-44,E.endingRestartBtn.textContent||"重新开启一局","");
