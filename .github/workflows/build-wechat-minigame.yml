@@ -92,6 +92,7 @@ jobs:
           python3 -m py_compile minigame/build/patch-core.py
           node --check dist/wechat-minigame/app-core.js
           node --check dist/wechat-minigame/app-board.js
+          node --check dist/wechat-minigame/cloudfunctions/messageBoard/index.js
           find dist/wechat-minigame/data -type f -name '*.js' -print0 | xargs -0 -n1 node --check
 
       - name: Runtime smoke test
@@ -224,6 +225,13 @@ jobs:
           test -f dist/wechat-minigame/assets/ui/medical-logo.png
           test -f dist/wechat-minigame/assets/bg-mobile/undergrad.jpg
           test -f dist/wechat-minigame/assets/bg-mobile/ending.jpg
+          test -f dist/wechat-minigame/cloudfunctions/messageBoard/index.js
+          test -f dist/wechat-minigame/cloudfunctions/messageBoard/package.json
+          test -f dist/wechat-minigame/cloudfunctions/messageBoard/config.json
+          grep -q '"cloudfunctionRoot": "cloudfunctions/"' dist/wechat-minigame/project.config.json
+          grep -q 'messageBoardEnabled: true' dist/wechat-minigame/src/config.js
+          grep -q '全体留言' dist/wechat-minigame/src/renderer.js
+          grep -q 'wx.cloud.callFunction' dist/wechat-minigame/app-board.js
           test ! -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
           test ! -f dist/wechat-minigame/src/main.js
           grep -q '"compileType": "game"' dist/wechat-minigame/project.config.json
