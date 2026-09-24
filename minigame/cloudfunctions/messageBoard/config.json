@@ -3,5 +3,12 @@
     "openapi": [
       "security.msgSecCheck"
     ]
-  }
+  },
+  "triggers": [
+    {
+      "name": "moderatePendingMessages",
+      "type": "timer",
+      "config": "0 * * * * * *"
+    }
+  ]
 }
