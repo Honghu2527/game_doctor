@@ -9,7 +9,7 @@
 
   function defaultPayload(){
     return {
-      title:"医学生养成记录｜这一局我走到了这里",
+      title:"学医养成记｜这一局我走到了这里",
       text:"从高考、医学院、升学、规培到职业选择，我刚走完一段医学人生。你也来试试自己的路线。",
       url:(typeof location!=="undefined"?location.href.split("?")[0]+"?share=1":"")
     };
