@@ -235,6 +235,12 @@ jobs:
           grep -q 'moderatePendingMessages' dist/wechat-minigame/cloudfunctions/messageBoard/config.json
           grep -q 'createPending' dist/wechat-minigame/app-board.js
           grep -q 'moderatePendingBatch' dist/wechat-minigame/cloudfunctions/messageBoard/index.js
+          grep -q '学医养成记' dist/wechat-minigame/src/config.js
+          grep -q '学医养成记' dist/wechat-minigame/src/renderer.js
+          if grep -R -n -E '医学生养成记录|医学生成长记录' dist/wechat-minigame --exclude='*.map'; then
+            echo "Legacy game title found in release package"
+            exit 1
+          fi
           test ! -f dist/wechat-minigame/assets/bg/undergrad_ai.webp
           test ! -f dist/wechat-minigame/src/main.js
           grep -q '"compileType": "game"' dist/wechat-minigame/project.config.json
