@@ -45,7 +45,7 @@ G.AD_SERVICE={
 function sharePayload(payload){
   payload=payload||{};
   return {
-    title:payload.title||"医学生养成记录｜这一局我走到了这里",
+    title:payload.title||"学医养成记｜这一局我走到了这里",
     query:"share=1"
   };
 }
