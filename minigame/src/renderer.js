@@ -391,7 +391,7 @@ function drawTopbar(){
   }else{rr(shellX,y,54,54,17,"#214f4b");text("⚕",shellX+27,y+10,40,34,{font:"28px serif",color:"#fff8ea",align:"center"});}
   var tx=shellX+64,tw=shellW-64;
   text("MED STUDENT LIFE SIMULATOR",tx,y+1,tw,13,{font:"800 8px sans-serif",color:"#d9bd82",maxLines:1});
-  text("医学生养成记录",tx,y+16,tw,35,{font:"800 31px serif",color:"#fffdf7",maxLines:1});
+  text("学医养成记",tx,y+16,tw,35,{font:"800 31px serif",color:"#fffdf7",maxLines:1});
   text("从出生条件、高考与择校，到升学、规培、科研、职称与职业终章。你走过的每一步都会留下痕迹。",
     tx,y+52,tw,16,{font:"10px sans-serif",color:"#c8d6d5",maxLines:3});
   var actionY=y+112,ax=shellX;
