@@ -1,5 +1,5 @@
 module.exports = {
-  title: "医学生养成记录",
+  title: "学医养成记",
   version: "1.0.0",
   rewardedAdUnitId: "",
   messageBoardEnabled: true,
